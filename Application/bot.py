@@ -74,7 +74,8 @@ def makeKeyboard_categories(categories):
     markup = types.InlineKeyboardMarkup()
     for name in categories['categories']:
         markup.add(types.InlineKeyboardButton(text=name,
-                                              callback_data='{"cat":{"cat":"' + name + '","rest_id":' + rest_id + '}}'))
+                                              callback_data='{"cat":{"cat":"' + name +
+                                                            '","rest_id":' + rest_id + ',"p":""}}'))
     if FC:
         markup.add(types.InlineKeyboardButton(text='<',
                                               callback_data='{"FC":{"name":"' + FC + '","TC_name":"' + TC_name + '"}}'))
@@ -88,13 +89,15 @@ def makeKeyboard_categories(categories):
 
 def makeKeyboard_menu(menu):
     markup = types.InlineKeyboardMarkup()
-    rest_id = menu['rest_id']
+    rest_id = str(menu['rest_id'])
     category = menu['category']
     for m in menu['menu']:
         markup.add(
             types.InlineKeyboardButton(text=m['name'],
                                        callback_data='{"menu":{"i":' + str(menu['menu'].index(m)) +
-                                                     ',"rest_id":' + str(rest_id) + ',"cat":"' + category + '"}}'))
+                                                     ',"rest_id":' + rest_id + ',"cat":"' + category + '"}}'))
+
+    markup.add(types.InlineKeyboardButton(text='<', callback_data='{"rest_id":' + rest_id + '}'))
     return markup
 
 
@@ -134,7 +137,8 @@ def makeKeyboard_food(menu, index, quantity=1):
     # Назад
     # Добавить флаг удаления сообщения
     markup.add(types.InlineKeyboardButton(text='Назад',
-                                          callback_data='{"cat":{"cat":"' + category + '","rest_id":' + rest_id + '}}'))
+                                          callback_data='{"cat":{"cat":"' + category +
+                                                        '","rest_id":' + rest_id + ',"p":"p"}}'))
 
     return markup
 
@@ -202,11 +206,21 @@ def handle_query(message):
         menu = DB.menu_rest(rest_id=rest_id, category=category)
         rest_name = menu['rest_name']
 
-        bot.edit_message_text(chat_id=chat_id,
-                              message_id=message_id,
-                              text=rest_name + '\nМеню',
-                              reply_markup=makeKeyboard_menu(menu),
-                              parse_mode='HTML')
+        photo = data['cat']['p']
+        if not photo:
+            bot.edit_message_text(chat_id=chat_id,
+                                  message_id=message_id,
+                                  text=rest_name + '\nМеню',
+                                  reply_markup=makeKeyboard_menu(menu),
+                                  parse_mode='HTML')
+        else:
+            bot.send_message(chat_id=chat_id,
+                                  text=rest_name + '\nМеню',
+                                  reply_markup=makeKeyboard_menu(menu),
+                                  parse_mode='HTML')
+            # Удаление старого сообщения
+            bot.delete_message(chat_id=chat_id, message_id=message_id)
+
 
     elif data.startswith('{"menu"'):
         data = json.loads(data)
