@@ -27,11 +27,13 @@ def menu_rest(rest_id, category):
     # Например
     rest_name = 'Шавуха от Петрухи'
 
-    path = f'images/{rest_name}/{category}/'
+    # path = f'images/{rest_name}/{category}/' # Путь толжен быть прописант так
+    # ( path + 'Shavuha_Petr2(Shaurma)_Shaurma_midle.jpg')
+
     menu = {'rest_name': 'Шавуха от Петрухи', 'rest_id': rest_id, 'category': category,
             'menu': [{'name': 'Шаурма большая',
-                      'img': path + 'Shavuha_Petr2(Shaurma)_Shaurma_midle.jpg',
-                      'composition': '', 'price': '150'},
-                     {'name': 'Шашлык', 'img': 'images/Шавуха от петрухи/Шаурма/cipa_chachlik_chicken.png',
-                      'composition': '', 'price': '310'}]}
+                      'img': 'images/Шавуха от петрухи/Шаурма/' + 'Shavuha_Petr2(Shaurma)_Shaurma_midle.jpg',
+                      'composition': 'Мясо, лаваш', 'price': 150},
+                     {'name': 'Шашлык куриный', 'img': 'images/Шавуха от петрухи/Шаурма/cipa_chachlik_chicken.png',
+                      'composition': 'Мясо', 'price': 310}]}
     return menu
