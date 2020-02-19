@@ -12,16 +12,21 @@ bot = telebot.TeleBot(TOKEN)
 print(None)
 last_data = {}  # Информация о последней нажатой кнопке пользователем
 open_basket = {}  # Информация о том открыл ли пользователь корзину или нет
+menu_id = {}
 
 
 @bot.message_handler(commands=['start'])
 def start_message(message: Message):
     chat_id = message.chat.id
+    message_id = message.message_id
 
     global last_data
     global open_basket
+    global menu_id
     last_data[chat_id] = None
     open_basket[chat_id] = False
+    menu_id[chat_id] = message_id
+    print(menu_id)
 
     markup = types.ReplyKeyboardMarkup(one_time_keyboard=False, resize_keyboard=True)
     btn = types.KeyboardButton('Корзина')
@@ -168,9 +173,9 @@ def makeKeyboard_food(menu, index, quantity=1):
 def makeKeyboard_basket(clear=False):
     markup = types.InlineKeyboardMarkup()
     if not clear:
+        markup.add(types.InlineKeyboardButton(text='Сформировать заказ', callback_data='pay'))
         markup.add(types.InlineKeyboardButton(text='Очистить',
                                               callback_data='{"basket":"clear"}'),
-                   types.InlineKeyboardButton(text='Оплатить', callback_data='None'),
                    types.InlineKeyboardButton(text='Изменить',
                                               callback_data='{"basket":"change"}'))
 
@@ -179,8 +184,9 @@ def makeKeyboard_basket(clear=False):
 
 
 # Добавление товара в корзину
-def add_basket(chat_id, food_name='', quantity=1, prise=0):
+def add_basket(chat_id, food_name='', quantity=1, prise=0, rest_id=None):
     chat_id = str(chat_id)
+    rest_id = str(rest_id)
     content = read_basket()
     if not (chat_id in content.keys()):
         content[chat_id] = []
@@ -192,15 +198,12 @@ def add_basket(chat_id, food_name='', quantity=1, prise=0):
             check_food = True
             break
     if not check_food:
-        content[chat_id] += [{'food_name': food_name, 'quantity': quantity, 'price': prise}]
-    print(content)
-
+        content[chat_id] += [{'rest_id': rest_id, 'food_name': food_name, 'quantity': quantity, 'price': prise}]
     file = open('basket.json', 'wt')
-    file.write(
-        json.dumps(content))  # Преобразовываем словарь в текст формата JSON, а затем записываем эти данные в файл
+    file.write(json.dumps(content))
 
 
-# Удаление нулевых эдемнтов карзины
+# Удаление нулевых эдемнтов корзины
 def save_basket(chat_id):
     chat_id = str(chat_id)
     content = read_basket()
@@ -263,7 +266,7 @@ def makeKeyboard_changeBasket(basket, chat_id):
     # save_data
     # Сохранить
     markup.add(
-        types.InlineKeyboardButton(text='Сохранить', callback_data='{"change":"save","data":' + str(save_data) + '}'))
+        types.InlineKeyboardButton(text='Сохранить', callback_data='{"change":"save"}'))
     return markup
 
 
@@ -275,6 +278,8 @@ def handle_query(message):
     data = message.data
     global last_data
     global open_basket
+    global menu_id
+
     # Храним информацию только о 50 последних пользователях
     if len(last_data) > 50:
         last_data = {}
@@ -282,7 +287,6 @@ def handle_query(message):
         open_basket = {}
 
     # Проверка что пользователь не нажал две клавиши на одном этапе меню
-
     if chat_id in last_data.keys() and data == last_data[chat_id]:
         return
     last_data[chat_id] = data
@@ -290,6 +294,7 @@ def handle_query(message):
 
     # Список торговых центров
     if data == 'start':
+        menu_id[chat_id] = message_id  # Запоминаем номер сообщения с меню
         bot.edit_message_text(chat_id=chat_id,
                               message_id=message_id,
                               text='Список торговых центров',
@@ -297,6 +302,7 @@ def handle_query(message):
                               parse_mode='HTML')
     # Список фудкортов
     elif data.startswith('{"TC"'):
+        menu_id[chat_id] = message_id  # Запоминаем номер сообщения с меню
         TC_name = json.loads(data)['TC']
 
         bot.edit_message_text(chat_id=chat_id,
@@ -306,6 +312,7 @@ def handle_query(message):
                               parse_mode='HTML')
     # Список ресторанов
     elif data.startswith('{"FC"'):
+        menu_id[chat_id] = message_id  # Запоминаем номер сообщения с меню
         data = json.loads(data)
         TC_name = data['FC']['TC_name']
         FC_name = data['FC']['name']
@@ -321,6 +328,7 @@ def handle_query(message):
 
     # Ктегории ресторана
     elif data.startswith('{"rest_id"'):
+        menu_id[chat_id] = message_id  # Запоминаем номер сообщения с меню
         data = json.loads(data)
         rest_id = data['rest_id']
         categories = DB.categories_rest(rest_id=rest_id)
@@ -337,6 +345,7 @@ def handle_query(message):
 
     # Меню ресторана
     elif data.startswith('{"cat"'):
+        menu_id[chat_id] = message_id  # Запоминаем номер сообщения с меню
         data = json.loads(data)
         rest_id = data['cat']['rest_id']
         category = data['cat']['cat']
@@ -360,6 +369,7 @@ def handle_query(message):
 
     # Список товаров (меню рестрана)
     elif data.startswith('{"menu"'):
+        menu_id[chat_id] = message_id  # Запоминаем номер сообщения с меню
         data = json.loads(data)
         rest_id = data['menu']['rest_id']
         category = data['menu']['cat']
@@ -407,11 +417,17 @@ def handle_query(message):
                                       text='Состав:\n' + menu['menu'][index]['composition'])
         elif 'add' in action:
             rest_name = menu['rest_name']
+
+            # Проверка если начали добавлять товары другого ресторана !!!!!!!! не работает
+            basket = read_basket(chat_id)
+            # if basket and rest_name != basket[0]['rest_id']:
+            #     del_basket(chat_id)
+
             food_name = menu['menu'][index]['name']
             prise = menu['menu'][index]['price']
             quantity = int(data[3][3:])
 
-            add_basket(chat_id, food_name, quantity, prise)
+            add_basket(chat_id, food_name, quantity, prise, rest_id=rest_id)
 
             bot.answer_callback_query(callback_query_id=message.id,
                                       show_alert=False,
@@ -421,6 +437,9 @@ def handle_query(message):
                              text=rest_name + '\nМеню',
                              reply_markup=makeKeyboard_menu(menu),
                              parse_mode='HTML')
+
+            menu_id[chat_id] = message_id + 1  # Запоминаем номер сообщения с меню
+
             # Удаление старого сообщения
             bot.delete_message(chat_id=chat_id, message_id=message_id)
 
@@ -429,6 +448,7 @@ def handle_query(message):
                 bot.delete_message(chat_id=chat_id, message_id=open_basket[chat_id])
                 open_basket[chat_id] = False
 
+    # Взаимодействие с корзиной
     elif data.startswith('{"basket"'):
         data = json.loads(data)
         action = data['basket']
@@ -462,15 +482,20 @@ def handle_query(message):
 
             if not items:
                 bot.edit_message_text(chat_id=chat_id, message_id=message_id,
-                                      text='<b>Корзина</b>\n\n' + 'Корзина пуста',
+                                      text='<b>Корзина пуста</b>',
                                       reply_markup=makeKeyboard_basket(clear=True),
                                       parse_mode='HTML')
                 return
 
-            bot.edit_message_text(chat_id=chat_id, message_id=message_id,
-                                  text='<b>Корзина</b>\n' + makeBasket(items),
-                                  reply_markup=makeKeyboard_basket(),
-                                  parse_mode='HTML')
+            basket_text, amount, basket_info = makeBasket(items)
+            rest_id = items[0]['rest_id']
+            restaurant = DB.categories_rest(rest_id)
+            rest_name = restaurant['rest_name']
+
+            bot.send_message(chat_id,
+                             text=f'<b>Корзина</b>\n{rest_name}\n\n<i>{basket_text}</i>\nИтого: <i>{amount} руб.</i>',
+                             reply_markup=makeKeyboard_basket(),
+                             parse_mode='HTML')
             return
 
         # Кнопки - и +
@@ -491,6 +516,64 @@ def handle_query(message):
             basket = read_basket(chat_id)
             bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id,
                                           reply_markup=makeKeyboard_changeBasket(basket, chat_id=chat_id))
+
+    elif data == 'pay':
+
+        bot.delete_message(chat_id=chat_id, message_id=message_id)
+
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton(text='Оплатить', pay=True),
+                   types.InlineKeyboardButton(text='Удалить', callback_data='del_order_or_receipt'))
+
+        items = read_basket(str(chat_id))
+        basket_text, amount, basket_info = makeBasket(items)
+        rest_id = items[0]['rest_id']
+        restaurant = DB.categories_rest(rest_id)
+        rest_name = restaurant['rest_name']
+
+        prices = []
+        for i in basket_info:
+            food_name = i['food_name']
+            quantity = i['quantity']
+            price = i['price']
+            prices.append(
+                types.LabeledPrice(label=food_name + ' ' + str(quantity) + ' шт.', amount=price * quantity * 100))
+
+        bot.send_invoice(chat_id=chat_id, title=f'{rest_name}\nЗаказ №...', description=basket_text,
+                         invoice_payload={"rtt": "YourPayLoad"},
+                         provider_token="381764678:TEST:14257", start_parameter="mybot",
+                         currency="RUB", prices=prices, reply_markup=markup)
+
+        open_basket[chat_id] = False
+
+    elif data == 'del_order_or_receipt':
+        bot.delete_message(chat_id=chat_id, message_id=message_id)
+
+
+@bot.pre_checkout_query_handler(func=lambda query: True)
+def checkout(pre_checkout_query):
+    bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True,
+                                  error_message="Aliens tried to steal your card's CVV, but we successfully protected your credentials,"
+                                                " try to pay again in a few minutes, we need a small rest.")
+
+
+@bot.message_handler(content_types=['successful_payment'])
+def got_payment(message):
+    chat_id = message.chat.id
+    global menu_id
+    print(menu_id)
+    bot.delete_message(chat_id, message_id=menu_id[chat_id])
+
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton(text='Свернуть', callback_data='del_order_or_receipt'))
+    bot.send_message(message.chat.id, 'Ваш заказ принят!\n'
+                                      'Ожидайте сообщения о готовности!\n'
+                                      'История покупок останется в чате над основным меню', reply_markup=markup)
+    bot.send_message(chat_id=chat_id,
+                     text='Список торговых центров',
+                     reply_markup=makeKeyboard_TC(DB.TC_list()),
+                     parse_mode='HTML')
+    del_basket(chat_id=chat_id)
 
 
 @bot.message_handler(content_types=['text'])
@@ -514,29 +597,35 @@ def text(message: Message):
         items = read_basket(str(chat_id))
         print(items)
         if not items:
-            bot.send_message(chat_id, text='<b>Корзина</b>\n\n' + 'Корзина пуста',
+            bot.send_message(chat_id, text='<b>Корзина пуста</b>',
                              reply_markup=makeKeyboard_basket(clear=True),
                              parse_mode='HTML')
             return
+        basket_text, amount, basket_info = makeBasket(items)
+        rest_id = items[0]['rest_id']
+        restaurant = DB.categories_rest(rest_id)
+        rest_name = restaurant['rest_name']
 
-        bot.send_message(chat_id, text='<b>Корзина</b>\n\n' + makeBasket(items),
+        bot.send_message(chat_id,
+                         text=f'<b>Корзина</b>\n{rest_name}\n\n<i>{basket_text}</i>\nИтого: <i>{amount} руб.</i>',
                          reply_markup=makeKeyboard_basket(),
                          parse_mode='HTML')
 
 
 def makeBasket(items):
-    basket = ''
+    basket_text = ''
     amount = 0
+    basket_info = []
     for i in items:
         food_name = i['food_name']
         quantity = i['quantity']
         price = i['price']
-        basket += food_name + 4 * ' ' + str(quantity) + ' шт.' + 4 * ' ' + str(quantity * price) + ' руб.\n'
+        basket_info.append({'food_name': food_name, 'quantity': quantity, 'price': price})
+        basket_text += food_name + ' ' + str(quantity) + ' шт.' + ' ' + str(quantity * price) + ' руб.\n'
         amount += quantity * price
-        print(i)
-    basket += f'\nИтого: {amount} руб'
-    return basket
+    return basket_text, amount, basket_info
 
 
 print('Бот запущен')
-bot.polling()
+bot.skip_pending = True
+bot.polling(none_stop=True, interval=0)
