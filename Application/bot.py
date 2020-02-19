@@ -106,6 +106,7 @@ def makeKeyboard_categories(categories):
     return markup
 
 
+# Список товаров категории
 def makeKeyboard_menu(menu):
     markup = types.InlineKeyboardMarkup()
     rest_id = str(menu['rest_id'])
@@ -120,6 +121,7 @@ def makeKeyboard_menu(menu):
     return markup
 
 
+# Меню информации о товаре
 def makeKeyboard_food(menu, index, quantity=1):
     markup = types.InlineKeyboardMarkup()
     rest_id = str(menu['rest_id'])
@@ -166,10 +168,11 @@ def makeKeyboard_food(menu, index, quantity=1):
 def makeKeyboard_basket(clear=False):
     markup = types.InlineKeyboardMarkup()
     if not clear:
-        markup.add(types.InlineKeyboardButton(text='Оплатить',
-                                              callback_data='None'),
-                   types.InlineKeyboardButton(text='Очистить',
-                                              callback_data='{"basket":"clear"}'))
+        markup.add(types.InlineKeyboardButton(text='Очистить',
+                                              callback_data='{"basket":"clear"}'),
+                   types.InlineKeyboardButton(text='Оплатить', callback_data='None'),
+                   types.InlineKeyboardButton(text='Изменить',
+                                              callback_data='{"basket":"change"}'))
 
     markup.add(types.InlineKeyboardButton(text='Свернуть', callback_data='{"basket":"close"}'))
     return markup
@@ -197,6 +200,17 @@ def add_basket(chat_id, food_name='', quantity=1, prise=0):
         json.dumps(content))  # Преобразовываем словарь в текст формата JSON, а затем записываем эти данные в файл
 
 
+# Удаление нулевых эдемнтов карзины
+def save_basket(chat_id):
+    chat_id = str(chat_id)
+    content = read_basket()
+    for i in content[chat_id]:
+        if 'food_name' in i.keys() and i['quantity'] <= 0:
+            content[chat_id].remove(i)
+        file = open('basket.json', 'wt')
+        file.write(json.dumps(content))
+
+
 # Считывание данных о товарах в корзине пользователя
 def read_basket(chat_id=''):
     chat_id = str(chat_id)
@@ -221,6 +235,36 @@ def del_basket(chat_id):
         del content[chat_id]
         file = open('basket.json', 'wt')
         file.write(json.dumps(content))
+
+
+# Изменение товаров корзине
+def makeKeyboard_changeBasket(basket, chat_id):
+    markup = types.InlineKeyboardMarkup()
+    chat_id = str(chat_id)
+    save_data = []
+
+    for i in range(len(basket)):
+        food_name = basket[i]['food_name']
+        quantity = basket[i]['quantity']
+        action = ['-' + str(quantity), '+' + str(quantity)]
+        save_data += [i, quantity]
+        # Название товара
+        markup.add(types.InlineKeyboardButton(text=food_name, callback_data='None'))
+        # -, количество, +
+        markup.add(types.InlineKeyboardButton(text='-',
+                                              callback_data='{"change":["' + food_name + '","' + action[
+                                                  0] + '"]}'),
+                   types.InlineKeyboardButton(text=str(quantity) + ' шт.',
+                                              callback_data='None'),
+                   types.InlineKeyboardButton(text='+',
+                                              callback_data='{"change":["' + food_name + '","' + action[
+                                                  1] + '"]}'))
+
+    # save_data
+    # Сохранить
+    markup.add(
+        types.InlineKeyboardButton(text='Сохранить', callback_data='{"change":"save","data":' + str(save_data) + '}'))
+    return markup
 
 
 # ===================== ОБРАБОТКА ОТВЕТОВ КЛАВИАТУРЫ ===================== #
@@ -390,13 +434,63 @@ def handle_query(message):
         action = data['basket']
         if action == 'close':
             bot.delete_message(chat_id=chat_id, message_id=message_id)
+            open_basket[chat_id] = False
         elif 'clear' in action:
             del_basket(chat_id)
             bot.answer_callback_query(callback_query_id=message.id,
                                       show_alert=False,
                                       text='Корзина очищена')
             bot.delete_message(chat_id=chat_id, message_id=message_id)
-        open_basket[chat_id] = False
+            open_basket[chat_id] = False
+
+        elif 'change' in action:
+            basket = read_basket(str(chat_id))
+            bot.edit_message_text(chat_id=chat_id,
+                                  message_id=message_id,
+                                  text='<b>Корзина</b> (изменение)',
+                                  reply_markup=makeKeyboard_changeBasket(basket=basket, chat_id=chat_id),
+                                  parse_mode='HTML')
+    # Изменение корзины
+    elif data.startswith('{"change"'):
+        # {"change": ["Шашлык куриный", "+2"]}
+        data = json.loads(data)['change']
+
+        # Кнопка сохранить
+        if data == 'save':
+            save_basket(chat_id)
+            items = read_basket(str(chat_id))
+
+            if not items:
+                bot.edit_message_text(chat_id=chat_id, message_id=message_id,
+                                      text='<b>Корзина</b>\n\n' + 'Корзина пуста',
+                                      reply_markup=makeKeyboard_basket(clear=True),
+                                      parse_mode='HTML')
+                return
+
+            bot.edit_message_text(chat_id=chat_id, message_id=message_id,
+                                  text='<b>Корзина</b>\n' + makeBasket(items),
+                                  reply_markup=makeKeyboard_basket(),
+                                  parse_mode='HTML')
+            return
+
+        # Кнопки - и +
+        food_name = data[0]
+        action = data[1]
+        if '-' in action:
+            quantity = int(data[1][1:])
+            if quantity == 0:
+                return
+            quantity = - 1
+            add_basket(chat_id=chat_id, food_name=food_name, quantity=quantity)
+            basket = read_basket(chat_id)
+            bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id,
+                                          reply_markup=makeKeyboard_changeBasket(basket, chat_id=chat_id))
+        elif '+' in action:
+            quantity = 1
+            add_basket(chat_id=chat_id, food_name=food_name, quantity=quantity)
+            basket = read_basket(chat_id)
+            bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id,
+                                          reply_markup=makeKeyboard_changeBasket(basket, chat_id=chat_id))
 
 
 @bot.message_handler(content_types=['text'])
@@ -410,6 +504,7 @@ def text(message: Message):
         chat_id = message.chat.id
         last_data[chat_id] = None
         message_id = message.message_id
+        # Удаление сообщения от пользователя
         bot.delete_message(chat_id=chat_id, message_id=message_id)
 
         if chat_id in open_basket.keys() and open_basket[chat_id]:  # Проверка того, что корзина уже открыта
@@ -419,25 +514,28 @@ def text(message: Message):
         items = read_basket(str(chat_id))
         print(items)
         if not items:
-            bot.send_message(chat_id, text='<b>                  Корзина</b>                  \n' + 'Корзина пуста',
+            bot.send_message(chat_id, text='<b>Корзина</b>\n\n' + 'Корзина пуста',
                              reply_markup=makeKeyboard_basket(clear=True),
                              parse_mode='HTML')
             return
 
-        basket = ''
-        amount = 0
-        for i in items:
-            food_name = i['food_name']
-            quantity = i['quantity']
-            price = i['price']
-            basket += food_name + 4 * ' ' + str(quantity) + ' шт.' + 4 * ' ' + str(quantity * price) + ' руб.\n'
-            amount += quantity * price
-            print(i)
-        basket += f'\nИтого: {amount} руб'
-
-        bot.send_message(chat_id, text='<b>                  Корзина</b>                  \n' + basket,
+        bot.send_message(chat_id, text='<b>Корзина</b>\n\n' + makeBasket(items),
                          reply_markup=makeKeyboard_basket(),
                          parse_mode='HTML')
+
+
+def makeBasket(items):
+    basket = ''
+    amount = 0
+    for i in items:
+        food_name = i['food_name']
+        quantity = i['quantity']
+        price = i['price']
+        basket += food_name + 4 * ' ' + str(quantity) + ' шт.' + 4 * ' ' + str(quantity * price) + ' руб.\n'
+        amount += quantity * price
+        print(i)
+    basket += f'\nИтого: {amount} руб'
+    return basket
 
 
 print('Бот запущен')
