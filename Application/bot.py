@@ -492,10 +492,10 @@ def handle_query(message):
             restaurant = DB.categories_rest(rest_id)
             rest_name = restaurant['rest_name']
 
-            bot.send_message(chat_id,
-                             text=f'<b>Корзина</b>\n{rest_name}\n\n<i>{basket_text}</i>\nИтого: <i>{amount} руб.</i>',
-                             reply_markup=makeKeyboard_basket(),
-                             parse_mode='HTML')
+            bot.edit_message_text(chat_id=chat_id, message_id=message_id,
+                                  text=f'<b>Корзина</b>\n{rest_name}\n\n<i>{basket_text}</i>\nИтого: <i>{amount} руб.</i>',
+                                  reply_markup=makeKeyboard_basket(),
+                                  parse_mode='HTML')
             return
 
         # Кнопки - и +
