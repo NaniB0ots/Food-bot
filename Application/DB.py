@@ -1,3 +1,8 @@
+import os
+
+Base_DIR = os.path.dirname(__file__)
+
+
 def TC_list():
     TC = [{'name': 'Модный'}, {'name': 'Комсомол'}, {'name': 'Сильвер молл'}]
     return TC
@@ -32,8 +37,8 @@ def menu_rest(rest_id, category):
 
     menu = {'rest_name': 'Шавуха от Петрухи', 'rest_id': rest_id, 'category': category,
             'menu': [{'name': 'Шаурма большая',
-                      'img': 'images/Шавуха от петрухи/Шаурма/' + 'Shavuha_Petr2(Shaurma)_Shaurma_midle.jpg',
+                      'img': Base_DIR + '/images/Шавуха от петрухи/Шаурма/' + 'Shavuha_Petr2(Shaurma)_Shaurma_midle.jpg',
                       'composition': 'Мясо, лаваш', 'price': 150},
-                     {'name': 'Шашлык куриный', 'img': 'images/Шавуха от петрухи/Шаурма/cipa_chachlik_chicken.png',
+                     {'name': 'Шашлык куриный', 'img': Base_DIR + '/images/Шавуха от петрухи/Шаурма/cipa_chachlik_chicken.png',
                       'composition': 'Мясо', 'price': 310}]}
     return menu
