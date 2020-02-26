@@ -1,18 +1,38 @@
 import telebot
 import json
+import time
 import os
 import DB
 from telebot import types
 from telebot.types import Message
+from flask import Flask, request
 from config import TOKEN
+from config import PROVIDER_TOKEN
+from config import URL
 
-bot = telebot.TeleBot(TOKEN)
+# ----------------------------------------- WEBHOOK ----------------------------------------
+bot = telebot.TeleBot(TOKEN, threaded=False)
+
+bot.remove_webhook()
+time.sleep(1)
+bot.set_webhook(url=URL + TOKEN)
+
+app = Flask(__name__)
+
+
+@app.route(f'/{TOKEN}', methods=["POST"])
+def webhook():
+    bot.process_new_updates([telebot.types.Update.de_json(request.stream.read().decode("utf-8"))])
+    return 'ok', 200
+
+
+# ------------------------------------------------------------------------------------------
+
 
 # callback_data size max 60
-print(None)
 last_data = {}  # Информация о последней нажатой кнопке пользователем
 open_basket = {}  # Информация о том открыл ли пользователь корзину или нет
-menu_id = {}
+menu_id = {}  # id сообщения с меню для каждого пользователя
 
 
 @bot.message_handler(commands=['start'])
@@ -26,7 +46,6 @@ def start_message(message: Message):
     last_data[chat_id] = None
     open_basket[chat_id] = False
     menu_id[chat_id] = message_id
-    print(menu_id)
 
     markup = types.ReplyKeyboardMarkup(one_time_keyboard=False, resize_keyboard=True)
     btn = types.KeyboardButton('Корзина')
@@ -516,7 +535,7 @@ def handle_query(message):
             basket = read_basket(chat_id)
             bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id,
                                           reply_markup=makeKeyboard_changeBasket(basket, chat_id=chat_id))
-
+    # Формирование заказа
     elif data == 'pay':
 
         bot.delete_message(chat_id=chat_id, message_id=message_id)
@@ -541,15 +560,17 @@ def handle_query(message):
 
         bot.send_invoice(chat_id=chat_id, title=f'{rest_name}\nЗаказ №...', description=basket_text,
                          invoice_payload={"rtt": "YourPayLoad"},
-                         provider_token="381764678:TEST:14257", start_parameter="mybot",
+                         provider_token=PROVIDER_TOKEN, start_parameter="mybot",
                          currency="RUB", prices=prices, reply_markup=markup)
 
         open_basket[chat_id] = False
 
+    # Удаление заказа или чека
     elif data == 'del_order_or_receipt':
         bot.delete_message(chat_id=chat_id, message_id=message_id)
 
 
+# Проверка оплаты
 @bot.pre_checkout_query_handler(func=lambda query: True)
 def checkout(pre_checkout_query):
     bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True,
@@ -557,6 +578,7 @@ def checkout(pre_checkout_query):
                                                 " try to pay again in a few minutes, we need a small rest.")
 
 
+# Cообщения после оплаты
 @bot.message_handler(content_types=['successful_payment'])
 def got_payment(message):
     chat_id = message.chat.id
@@ -564,16 +586,17 @@ def got_payment(message):
     print(menu_id)
     bot.delete_message(chat_id, message_id=menu_id[chat_id])
 
+    bot.send_message(chat_id=chat_id,
+                     text='Список торговых центров',
+                     reply_markup=makeKeyboard_TC(DB.TC_list()),
+                     parse_mode='HTML')
+    del_basket(chat_id=chat_id)  # Удаление информации из корзины
+
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton(text='Свернуть', callback_data='del_order_or_receipt'))
     bot.send_message(message.chat.id, 'Ваш заказ принят!\n'
                                       'Ожидайте сообщения о готовности!\n'
                                       'История покупок останется в чате над основным меню', reply_markup=markup)
-    bot.send_message(chat_id=chat_id,
-                     text='Список торговых центров',
-                     reply_markup=makeKeyboard_TC(DB.TC_list()),
-                     parse_mode='HTML')
-    del_basket(chat_id=chat_id)
 
 
 @bot.message_handler(content_types=['text'])
@@ -612,6 +635,7 @@ def text(message: Message):
                          parse_mode='HTML')
 
 
+# Формирует информацию о корзине
 def makeBasket(items):
     basket_text = ''
     amount = 0
@@ -626,6 +650,8 @@ def makeBasket(items):
     return basket_text, amount, basket_info
 
 
-print('Бот запущен')
-bot.skip_pending = True
-bot.polling(none_stop=True, interval=0)
+if __name__ == '__main__':
+    bot.remove_webhook()
+    bot.skip_pending = True
+    print('Бот запущен')
+    bot.polling(none_stop=True, interval=0)
