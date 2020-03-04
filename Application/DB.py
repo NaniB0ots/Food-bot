@@ -134,7 +134,6 @@ def TC_list():
     c = conn.cursor()
     c.execute('SELECT name FROM TC_list')
     names = c.fetchall()
-    print(names)
     temp = []
     for i in names:
         temp.append({'name': "".join(i)})
@@ -145,20 +144,30 @@ def TC_list():
 
 
 def FC_list(TC_name):
+    '''
+        if 'запрос от DB':
+        FC = {'TC_name': TC_name, 'FC': ['3-этаж', '2-этаж']}
+    else:
+        FC = {'TC_name': TC_name, 'FC': None}
+    return FC
+    '''
     conn = get_connection()
     c = conn.cursor()
-    temp=[]
+    temp = []
     c.execute('SELECT id_TC FROM TC_list where name = (?)', (TC_name,))
     id = c.fetchone()
     c.execute('''SELECT FC FROM FC_list INNER JOIN TC_list 
                 ON TC_list.id_TC = FC_list.id_TC 
                 WHERE TC_list.id_TC = (?)''',
-                (id))
+              (id))
     FC = c.fetchall()
-    temp=[]
-    for i in FC:
-        temp.append("".join(i))
-    temp = {'TC_name': TC_name, 'FC': temp}
+    if len(FC) > 1:
+        temp = []
+        for i in FC:
+            temp.append("".join(i))
+        temp = {'TC_name': TC_name, 'FC': temp}
+    else:
+        temp = {'TC_name': TC_name, 'FC': None}
     print('ТЕСТ ВОЗВРАТА: ', temp)
     return temp
 
@@ -173,17 +182,22 @@ def rest_list(TC_name, FC=None):
     c = conn.cursor()
     temp = []
     c.execute('SELECT id_TC FROM TC_list where name = (?)', (TC_name,))
-    id_TC = c.fetchone()
-    c.execute('''SELECT id_rest, rest_name FROM rest_list INNER JOIN FC_list 
-                    ON FC_list.id_FC = rest_list.id_FC
-                    WHERE FC_list.id_FC = (?)''',
-              (id_TC))
+    id_TC = int(str(c.fetchone())[1:-2])
+    c.execute('SELECT id_FC FROM FC_list where FC = (?)', (FC,))
+    id_FC = int(str(c.fetchone())[1:-2])
+    ids = (id_FC, id_TC)
+    c.execute('''SELECT id_rest, rest_name FROM rest_list LEFT JOIN FC_list
+                 ON rest_list.id_FC = FC_list.id_FC
+                 LEFT JOIN TC_list ON TC_list.id_TC = FC_list.id_FC
+                 WHERE (rest_list.id_FC = (?)) AND (FC_list.id_TC = (?))''',
+                  (ids))
     rest_names = c.fetchall()
     for i in rest_names:
-        temp.append({'rest_id':i[0], 'name': "".join(i[1])})
-    temp = {'TC_name' : TC_name, 'FC' : FC, 'rests' : temp}
-    print('ТЕСТ ВЫВОДА: ',temp)
+        temp.append({'rest_id': i[0], 'name': "".join(i[1])})
+    temp = {'TC_name': TC_name, 'FC': FC, 'rests': temp}
+    print('ТЕСТ ВЫВОДА: ', temp)
     return temp
+
 
 def categories_rest(rest_id):
     '''
@@ -194,4 +208,3 @@ def categories_rest(rest_id):
     conn = get_connection()
     c = conn.cursor()
     temp = []
-    return categories
