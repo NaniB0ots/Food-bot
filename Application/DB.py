@@ -230,3 +230,29 @@ def categories_rest(rest_id):
         categories.append("".join(i))
     temp = {'rest_name': rest_name, 'TC_name' : TC , 'FC' : FC, 'rest_id' : rest_id, 'categories' : categories }
     print('ТЕСТ ВЫВОДА: ', temp)
+    return temp
+
+def menu_rest(rest_id, category):
+    '''
+    # Например
+    rest_name = 'Шавуха от Петрухи'
+
+    # path = f'images/{rest_name}/{category}/' # Путь толжен быть прописант так
+    # ( path + 'Shavuha_Petr2(Shaurma)_Shaurma_midle.jpg')
+
+    menu = {'rest_name': 'Шавуха от Петрухи', 'rest_id': rest_id, 'category': category,
+            'menu': [{'name': 'Шаурма большая',
+                      'img': 'images/Шавуха от петрухи/Шаурма/' + 'Shavuha_Petr2(Shaurma)_Shaurma_midle.jpg',
+                      'composition': 'Мясо, лаваш', 'price': 150},
+                     {'name': 'Шашлык куриный', 'img': 'images/Шавуха от петрухи/Шаурма/cipa_chachlik_chicken.png',
+                      'composition': 'Мясо', 'price': 310}]}
+    '''
+
+
+
+
+
+
+
+
+
