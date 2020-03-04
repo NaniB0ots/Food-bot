@@ -132,12 +132,12 @@ def makeKeyboard_categories(categories):  # !!!!!!!!!!!!! изменил на с
 
 
 # Список товаров категории
-def makeKeyboard_menu(menu): # !!!!!!!!!!!!!! сделал список
+def makeKeyboard_menu(menu):  # !!!!!!!!!!!!!! сделал список
     markup = types.InlineKeyboardMarkup()
     rest_id = str(menu['rest_id'])
     category = menu['category']
     for m in menu['menu']:
-        data = f'[{menu["menu"].index(m)}, "{rest_id}", "{category}"]'  # [int(index), rest_id, category]
+        data = f'[{menu["menu"].index(m)}, "{category}", "{rest_id}"]'  # [int(index), rest_id, category]
         markup.add(types.InlineKeyboardButton(text=m['name'], callback_data='{"menu":' + data + '}'))
 
     markup.add(types.InlineKeyboardButton(text='<', callback_data='{"rest_id":' + rest_id + '}'))
@@ -148,6 +148,7 @@ def makeKeyboard_menu(menu): # !!!!!!!!!!!!!! сделал список
 def makeKeyboard_food(menu, index, quantity=1):
     markup = types.InlineKeyboardMarkup()
     rest_id = str(menu['rest_id'])
+    print(rest_id)
     category = menu['category']
     price = menu['menu'][index]['price']
 
@@ -181,7 +182,6 @@ def makeKeyboard_food(menu, index, quantity=1):
     # Назад
     data = f'["{category}", "{rest_id}", "p"]'  # [category, rest_id, "p"] p - после фотографии
     markup.add(types.InlineKeyboardButton(text='Отмена', callback_data='{"cat":' + data + '}'))
-
     return markup
 
 
@@ -407,7 +407,7 @@ def handle_query(message):
 
     # Взаимодействие с товаром
     elif data.startswith('{"food'):
-        '{"food": [12345678, "Шаурма", 0, "-1"]}'
+        # '{"food": [rest_id, category, index, action]}'
         data = json.loads(data)['food']
         rest_id = data[0]
         category = data[1]
