@@ -1,3 +1,15 @@
 
 *.pyc
 Application/__pycache__/DB.cpython-38.pyc
+.idea/Food-bot v2.iml
+.idea/inspectionProfiles/profiles_settings.xml
+.idea/misc.xml
+.idea/modules.xml
+Application/basket.json
+Application/__pycache__/DB.cpython-38.pyc
+Application/__pycache__/config.cpython-38.pyc
+.idea/workspace.xml
+.idea/vcs.xml
+Application/basket.json
+Application/__pycache__/DB.cpython-38.pyc
+Application/__pycache__/config.cpython-38.pyc
