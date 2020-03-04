@@ -62,7 +62,7 @@ def start_message(message: Message):
                      parse_mode='HTML')
 
 
-# Список торговых центров (меню)
+# Список торговых центров (меню) !!!!!!!!!!!!!!!!!!!! оставил как было
 def makeKeyboard_TC(TC):
     markup = types.InlineKeyboardMarkup()
     for i in TC:
@@ -71,14 +71,16 @@ def makeKeyboard_TC(TC):
 
 
 # Список фудкортов (меню)
-def makeKeyboard_FC(FC):
+def makeKeyboard_FC(FC):  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! изменил на список
     TC_name = FC['TC_name']
+    print('В боте', FC)
     if not FC['FC']:
         return makeKeyboard_rest(DB.rest_list(TC_name))
     markup = types.InlineKeyboardMarkup()
     for name in FC['FC']:
+        data = f'["{name}","{TC_name}"]'  # [name, TC_name]
         markup.add(types.InlineKeyboardButton(text=name,
-                                              callback_data='{"FC":{"name":"' + name + '","TC_name":"' + TC_name + '"}}'))
+                                              callback_data='{"FC":' + data + '}'))
     markup.add(types.InlineKeyboardButton(text='<',
                                           callback_data='start'))
 
@@ -86,14 +88,13 @@ def makeKeyboard_FC(FC):
 
 
 # Список рестаранов (меню)
-def makeKeyboard_rest(restaurants):
+def makeKeyboard_rest(restaurants):  # !!!!!!!!!!!!!!!! не менял
     TC_name = restaurants['TC_name']
     FC = restaurants['FC']
     markup = types.InlineKeyboardMarkup()
     for rest in restaurants['rests']:
         markup.add(
-            types.InlineKeyboardButton(text=rest['name'], callback_data='{"rest_id":' + str(
-                rest["rest_id"]) + '}'))
+            types.InlineKeyboardButton(text=rest['name'], callback_data='{"rest_id":' + str(rest["rest_id"]) + '}'))
 
     if FC:
         markup.add(types.InlineKeyboardButton(text='<', callback_data='{"TC":"' + TC_name + '"}'))
@@ -107,7 +108,7 @@ def makeKeyboard_rest(restaurants):
 
 
 # Список категорий ресторана
-def makeKeyboard_categories(categories):
+def makeKeyboard_categories(categories):  # !!!!!!!!!!!!! изменил на список
     rest_id = str(categories['rest_id'])
     TC_name = categories['TC_name']
     FC = categories['FC']
@@ -115,13 +116,13 @@ def makeKeyboard_categories(categories):
 
     markup = types.InlineKeyboardMarkup()
     for name in categories['categories']:
-        markup.add(types.InlineKeyboardButton(text=name,
-                                              callback_data='{"cat":{"cat":"' + name +
-                                                            '","rest_id":' + rest_id + ',"p":""}}'))
-        # p - photo
+        data = f'["{name}", "{rest_id}", ""]'  # [name, rest_id, ""] "" - не после показа фотографии
+        markup.add(types.InlineKeyboardButton(text=name, callback_data='{"cat":' + data + '}'))
+
     if FC:
+        data = f'["{FC}", "{TC_name}"]'  # [FC, TC_name]
         markup.add(types.InlineKeyboardButton(text='<',
-                                              callback_data='{"FC":{"name":"' + FC + '","TC_name":"' + TC_name + '"}}'))
+                                              callback_data='{"FC":' + data + '}'))
     else:
         markup.add(types.InlineKeyboardButton(text='<',
                                               callback_data='{"TC":"' + TC_name + '"}'))
@@ -131,15 +132,13 @@ def makeKeyboard_categories(categories):
 
 
 # Список товаров категории
-def makeKeyboard_menu(menu):
+def makeKeyboard_menu(menu):  # !!!!!!!!!!!!!! сделал список
     markup = types.InlineKeyboardMarkup()
     rest_id = str(menu['rest_id'])
     category = menu['category']
     for m in menu['menu']:
-        markup.add(
-            types.InlineKeyboardButton(text=m['name'],
-                                       callback_data='{"menu":{"i":' + str(menu['menu'].index(m)) +
-                                                     ',"rest_id":' + rest_id + ',"cat":"' + category + '"}}'))
+        data = f'[{menu["menu"].index(m)}, "{category}", "{rest_id}"]'  # [int(index), rest_id, category]
+        markup.add(types.InlineKeyboardButton(text=m['name'], callback_data='{"menu":' + data + '}'))
 
     markup.add(types.InlineKeyboardButton(text='<', callback_data='{"rest_id":' + rest_id + '}'))
     return markup
@@ -149,6 +148,7 @@ def makeKeyboard_menu(menu):
 def makeKeyboard_food(menu, index, quantity=1):
     markup = types.InlineKeyboardMarkup()
     rest_id = str(menu['rest_id'])
+    print(rest_id)
     category = menu['category']
     price = menu['menu'][index]['price']
 
@@ -180,11 +180,8 @@ def makeKeyboard_food(menu, index, quantity=1):
                                           callback_data='None'))
 
     # Назад
-    markup.add(types.InlineKeyboardButton(text='Отмена',
-                                          callback_data='{"cat":{"cat":"' + category +
-                                                        '","rest_id":' + rest_id + ',"p":"p"}}'))
-    # p - photo
-
+    data = f'["{category}", "{rest_id}", "p"]'  # [category, rest_id, "p"] p - после фотографии
+    markup.add(types.InlineKeyboardButton(text='Отмена', callback_data='{"cat":' + data + '}'))
     return markup
 
 
@@ -333,8 +330,9 @@ def handle_query(message):
     elif data.startswith('{"FC"'):
         menu_id[chat_id] = message_id  # Запоминаем номер сообщения с меню
         data = json.loads(data)
-        TC_name = data['FC']['TC_name']
-        FC_name = data['FC']['name']
+
+        TC_name = data['FC'][1]  # TC_name
+        FC_name = data['FC'][0]  # FC_name
         if FC_name:
             txt = f'{TC_name}\n{FC_name}\n'
         else:
@@ -366,12 +364,12 @@ def handle_query(message):
     elif data.startswith('{"cat"'):
         menu_id[chat_id] = message_id  # Запоминаем номер сообщения с меню
         data = json.loads(data)
-        rest_id = data['cat']['rest_id']
-        category = data['cat']['cat']
+        rest_id = data['cat'][1]
+        category = data['cat'][0]
         menu = DB.menu_rest(rest_id=rest_id, category=category)
         rest_name = menu['rest_name']
 
-        photo = data['cat']['p']
+        photo = data['cat'][2]
         if not photo:
             bot.edit_message_text(chat_id=chat_id,
                                   message_id=message_id,
@@ -390,9 +388,9 @@ def handle_query(message):
     elif data.startswith('{"menu"'):
         menu_id[chat_id] = message_id  # Запоминаем номер сообщения с меню
         data = json.loads(data)
-        rest_id = data['menu']['rest_id']
-        category = data['menu']['cat']
-        index = data['menu']['i']
+        rest_id = data['menu'][2]
+        category = data['menu'][1]
+        index = data['menu'][0]
 
         # Отправка изображния
         menu = DB.menu_rest(rest_id=rest_id, category=category)
@@ -409,7 +407,7 @@ def handle_query(message):
 
     # Взаимодействие с товаром
     elif data.startswith('{"food'):
-        '{"food": [12345678, "Шаурма", 0, "-1"]}'
+        # '{"food": [rest_id, category, index, action]}'
         data = json.loads(data)['food']
         rest_id = data[0]
         category = data[1]
