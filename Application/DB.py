@@ -247,8 +247,21 @@ def menu_rest(rest_id, category):
                      {'name': 'Шашлык куриный', 'img': 'images/Шавуха от петрухи/Шаурма/cipa_chachlik_chicken.png',
                       'composition': 'Мясо', 'price': 310}]}
     '''
-
-
+    conn = get_connection()
+    c = conn.cursor()
+    temp = []
+    c.execute('SELECT rest_name FROM rest_list WHERE id_rest = (?)', (rest_id,))
+    rest_name = str(c.fetchone())[1:-2]
+    c.execute('SELECT id_categories FROM categories_rest WHERE categories = (?)', (category,))
+    id_categories = int(str(c.fetchone())[1:-2])
+    c.execute('SELECT menu FROM menu_rest WHERE id_categories = (?)', (id_categories,))
+    menu = c.fetchall()
+    menu_temp = []
+    for i in menu:
+        menu_temp.append({'name' : "".join(i)})
+    temp = {'rest_name' : rest_name, 'rest_id' : rest_id, 'category' : category, 'menu': menu_temp}
+    print('ТЕСТ ВЫВОДА: ',temp)
+    return temp
 
 
 
