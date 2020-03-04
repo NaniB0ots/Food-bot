@@ -208,3 +208,25 @@ def categories_rest(rest_id):
     conn = get_connection()
     c = conn.cursor()
     temp = []
+    c.execute('SELECT rest_name FROM rest_list where id_rest = (?)', (rest_id,))
+    rest_name = str(c.fetchone())[1:-2]
+    c.execute('SELECT id_FC FROM rest_list where id_rest = (?)', (rest_id,))
+    id_FC = int(str(c.fetchone())[1:-2])
+    c.execute('SELECT id_TC FROM FC_list where id_FC = (?)', (id_FC,))
+    id_TC = int(str(c.fetchone())[1:-2])
+    c.execute('SELECT FC FROM FC_list where id_FC = (?)', (id_FC,))
+    FC = str(c.fetchone())[1:-2]
+    c.execute('SELECT name FROM TC_list WHERE id_TC = (?)', (id_TC,))
+    TC = str(c.fetchone())[1:-2]
+    c.execute('''SELECT categories FROM categories_rest INNER JOIN rest_list
+                     ON categories_rest.id_rest = rest_list.id_rest
+                     INNER JOIN FC_list ON rest_list.id_FC = FC_list.id_FC
+                     INNER JOIN TC_list ON FC_list.id_TC = TC_list.id_TC
+                     WHERE (categories_rest.id_rest = (?))''',
+                        (rest_id))
+    categories_temp = c.fetchall()
+    categories=[]
+    for i in categories_temp:
+        categories.append("".join(i))
+    temp = {'rest_name': rest_name, 'TC_name' : TC , 'FC' : FC, 'rest_id' : rest_id, 'categories' : categories }
+    print('ТЕСТ ВЫВОДА: ', temp)
