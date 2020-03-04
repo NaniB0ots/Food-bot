@@ -134,7 +134,6 @@ def TC_list():
     c = conn.cursor()
     c.execute('SELECT name FROM TC_list')
     names = c.fetchall()
-    print(names)
     temp = []
     for i in names:
         temp.append({'name': "".join(i)})
@@ -187,14 +186,12 @@ def rest_list(TC_name, FC=None):
     c.execute('SELECT id_FC FROM FC_list where FC = (?)', (FC,))
     id_FC = int(str(c.fetchone())[1:-2])
     ids = (id_FC, id_TC)
-    print(ids)
     c.execute('''SELECT id_rest, rest_name FROM rest_list LEFT JOIN FC_list
                  ON rest_list.id_FC = FC_list.id_FC
                  LEFT JOIN TC_list ON TC_list.id_TC = FC_list.id_FC
                  WHERE (rest_list.id_FC = (?)) AND (FC_list.id_TC = (?))''',
                   (ids))
     rest_names = c.fetchall()
-    print(rest_names)
     for i in rest_names:
         temp.append({'rest_id': i[0], 'name': "".join(i[1])})
     temp = {'TC_name': TC_name, 'FC': FC, 'rests': temp}
