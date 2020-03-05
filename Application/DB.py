@@ -215,9 +215,10 @@ def categories_rest(rest_id):
     c.execute('SELECT id_TC FROM FC_list where id_FC = (?)', (id_FC,))
     id_TC = int(str(c.fetchone())[1:-2])
     c.execute('SELECT FC FROM FC_list where id_FC = (?)', (id_FC,))
-    FC = str(c.fetchone())[1:-2]
+    FC = str(c.fetchone())[2:-3]
     c.execute('SELECT name FROM TC_list WHERE id_TC = (?)', (id_TC,))
-    TC = str(c.fetchone())[1:-2]
+    TC = str(c.fetchone())[2:-3]
+    print(TC)
     c.execute('''SELECT categories FROM categories_rest INNER JOIN rest_list
                      ON categories_rest.id_rest = rest_list.id_rest
                      INNER JOIN FC_list ON rest_list.id_FC = FC_list.id_FC
