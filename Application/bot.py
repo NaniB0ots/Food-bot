@@ -73,7 +73,6 @@ def makeKeyboard_TC(TC):
 # Список фудкортов (меню)
 def makeKeyboard_FC(FC):  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! изменил на список
     TC_name = FC['TC_name']
-    print('В боте', FC)
     if not FC['FC']:
         return makeKeyboard_rest(DB.rest_list(TC_name))
     markup = types.InlineKeyboardMarkup()
@@ -112,7 +111,6 @@ def makeKeyboard_categories(categories):  # !!!!!!!!!!!!! изменил на с
     rest_id = str(categories['rest_id'])
     TC_name = categories['TC_name']
     FC = categories['FC']
-    print(FC)
 
     markup = types.InlineKeyboardMarkup()
     for name in categories['categories']:
@@ -148,7 +146,6 @@ def makeKeyboard_menu(menu):  # !!!!!!!!!!!!!! сделал список
 def makeKeyboard_food(menu, index, quantity=1):
     markup = types.InlineKeyboardMarkup()
     rest_id = str(menu['rest_id'])
-    print(rest_id)
     category = menu['category']
     price = menu['menu'][index]['price']
 
@@ -581,7 +578,6 @@ def checkout(pre_checkout_query):
 def got_payment(message):
     chat_id = message.chat.id
     global menu_id
-    print(menu_id)
     bot.delete_message(chat_id, message_id=menu_id[chat_id])
 
     bot.send_message(chat_id=chat_id,
@@ -604,7 +600,6 @@ def text(message: Message):
     if data == 'Корзина':
         global last_data
         global open_basket
-        print(open_basket)
         chat_id = message.chat.id
         last_data[chat_id] = None
         message_id = message.message_id
@@ -616,7 +611,6 @@ def text(message: Message):
         open_basket[chat_id] = message_id + 1
 
         items = read_basket(str(chat_id))
-        print(items)
         if not items:
             bot.send_message(chat_id, text='<b>Корзина пуста</b>',
                              reply_markup=makeKeyboard_basket(clear=True),
@@ -653,3 +647,5 @@ if __name__ == '__main__':
     bot.skip_pending = True
     print('Бот запущен')
     bot.polling(none_stop=True, interval=0)
+
+print('Бот запущен')
