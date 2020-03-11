@@ -62,6 +62,8 @@ def init_db():
                   id_menu           INTEGER PRIMARY KEY,
                   menu              TEXT NOT NULL,
                   id_categories     INTEGER NOT NULL,
+                  img               TEXT,
+                  compositions      TEXT,
                   FOREIGN KEY(id_categories) REFERENCES categories_rest(id_categories)
             )
         ''')
@@ -80,7 +82,7 @@ def insert_TC_list(id_TC, TC_name):
     conn.commit()
     print('TC_list updated')
     c.close()
-    conn.close()
+
 
 
 def insert_FC_list(id_FC, FC, id_TC):
@@ -91,7 +93,7 @@ def insert_FC_list(id_FC, FC, id_TC):
     conn.commit()
     print('FC_list updated')
     c.close()
-    conn.close()
+
 
 
 def insert_rest_list(id_rest, rest_name, id_FC):
@@ -102,7 +104,7 @@ def insert_rest_list(id_rest, rest_name, id_FC):
     conn.commit()
     print('rest_list updated')
     c.close()
-    conn.close()
+
 
 
 def insert_categories_rest(id_categories, categories, id_rest):
@@ -113,18 +115,18 @@ def insert_categories_rest(id_categories, categories, id_rest):
     conn.commit()
     print('categories_rest updated')
     c.close()
-    conn.close()
 
 
-def insert_menu_rest(id_menu, menu, id_categories):
+
+def insert_menu_rest(id_menu, menu, id_categories,price,img,compositions):
     conn = get_connection()
     c = conn.cursor()
-    temp = (id_menu, menu, id_categories)
-    c.executemany('INSERT INTO menu_rest VALUES(?,?,?)', (temp,))
+    temp = (id_menu, menu, id_categories,img,compositions,price)
+    c.executemany('INSERT INTO menu_rest VALUES(?,?,?,?,?,?)', (temp,))
     conn.commit()
     print('menu_rest updated')
     c.close()
-    conn.close()
+
 
 
 # Вывод данных
@@ -190,7 +192,7 @@ def rest_list(TC_name, FC=None):
                  ON rest_list.id_FC = FC_list.id_FC
                  LEFT JOIN TC_list ON TC_list.id_TC = FC_list.id_FC
                  WHERE (rest_list.id_FC = (?)) AND (FC_list.id_TC = (?))''',
-                  (ids))
+              (ids))
     rest_names = c.fetchall()
     for i in rest_names:
         temp.append({'rest_id': i[0], 'name': "".join(i[1])})
@@ -224,14 +226,15 @@ def categories_rest(rest_id):
                      INNER JOIN FC_list ON rest_list.id_FC = FC_list.id_FC
                      INNER JOIN TC_list ON FC_list.id_TC = TC_list.id_TC
                      WHERE (categories_rest.id_rest = (?))''',
-                        (rest_id))
+              (rest_id))
     categories_temp = c.fetchall()
-    categories=[]
+    categories = []
     for i in categories_temp:
         categories.append("".join(i))
-    temp = {'rest_name': rest_name, 'TC_name' : TC , 'FC' : FC, 'rest_id' : rest_id, 'categories' : categories }
+    temp = {'rest_name': rest_name, 'TC_name': TC, 'FC': FC, 'rest_id': int(rest_id), 'categories': categories}
     print('ТЕСТ ВЫВОДА: ', temp)
     return temp
+
 
 def menu_rest(rest_id, category):
     '''
@@ -252,21 +255,37 @@ def menu_rest(rest_id, category):
     c = conn.cursor()
     temp = []
     c.execute('SELECT rest_name FROM rest_list WHERE id_rest = (?)', (rest_id,))
-    rest_name = str(c.fetchone())[1:-2]
+    rest_name = "".join(c.fetchone())
     c.execute('SELECT id_categories FROM categories_rest WHERE categories = (?)', (category,))
     id_categories = int(str(c.fetchone())[1:-2])
     c.execute('SELECT menu FROM menu_rest WHERE id_categories = (?)', (id_categories,))
     menu = c.fetchall()
+    c.execute('SELECT img FROM menu_rest WHERE id_categories = (?)', (id_categories,))
+    img = c.fetchall()
+    c.execute('SELECT compositions FROM menu_rest WHERE id_categories = (?)', (id_categories,))
+    compositions = c.fetchall()
+    c.execute('SELECT price FROM menu_rest WHERE id_categories = (?)', (id_categories,))
+    price = c.fetchall()
     menu_temp = []
-    for i in menu:
-        menu_temp.append({'name' : "".join(i)})
-    temp = {'rest_name' : rest_name, 'rest_id' : rest_id, 'category' : category, 'menu': menu_temp}
-    print('ТЕСТ ВЫВОДА: ',temp)
+    for i in range(len(menu)):
+        menu_temp.append({'name': "".join(menu[i]), 'img': "".join(img[i]), 'composition': "".join(compositions[i]), 'price': int("".join(price[i]))})
+    temp = {'rest_name': rest_name, 'rest_id': int(rest_id), 'category': category, 'menu': menu_temp}
+    print('ТЕСТ ВЫВОДА: ', temp)
     return temp
 
-
-
-
-
-
-
+def add_column():
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('DELETE FROM menu_rest')
+    c.execute('ALTER TABLE menu_rest ADD COLUMN price')
+    conn.commit()
+    c.close()
+    conn.close()
+def clear_table(name_table):
+    conn = get_connection()
+    c = conn.cursor()
+    name_table = str(name_table)
+    c.execute("DELETE FROM "+name_table)
+    conn.commit()
+    c.close()
+    conn.close()
