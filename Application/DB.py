@@ -69,8 +69,6 @@ def init_db():
         ''')
     conn.commit()
     c.close()
-    conn.close()
-
 
 # Ввод данных
 
@@ -141,7 +139,6 @@ def TC_list():
         temp.append({'name': "".join(i)})
     print('ТЕСТ ВОЗВРАТА: ', temp)
     c.close()
-    conn.close()
     return temp
 
 
@@ -280,7 +277,7 @@ def add_column():
     c.execute('ALTER TABLE menu_rest ADD COLUMN price')
     conn.commit()
     c.close()
-    conn.close()
+
 def clear_table(name_table):
     conn = get_connection()
     c = conn.cursor()
@@ -288,4 +285,3 @@ def clear_table(name_table):
     c.execute("DELETE FROM "+name_table)
     conn.commit()
     c.close()
-    conn.close()
