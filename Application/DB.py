@@ -137,8 +137,6 @@ def TC_list():
     temp = []
     for i in names:
         temp.append({'name': "".join(i)})
-    print('ТЕСТ ВОЗВРАТА: ', temp)
-    c.close()
     return temp
 
 
@@ -160,14 +158,10 @@ def FC_list(TC_name):
                 WHERE TC_list.id_TC = (?)''',
               (id))
     FC = c.fetchall()
-    if len(FC) > 1:
-        temp = []
-        for i in FC:
-            temp.append("".join(i))
-        temp = {'TC_name': TC_name, 'FC': temp}
-    else:
-        temp = {'TC_name': TC_name, 'FC': None}
-    print('ТЕСТ ВОЗВРАТА: ', temp)
+    temp = []
+    for i in FC:
+        temp.append("".join(i))
+    temp = {'TC_name': TC_name, 'FC': temp}
     return temp
 
 
@@ -194,7 +188,6 @@ def rest_list(TC_name, FC=None):
     for i in rest_names:
         temp.append({'rest_id': i[0], 'name': "".join(i[1])})
     temp = {'TC_name': TC_name, 'FC': FC, 'rests': temp}
-    print('ТЕСТ ВЫВОДА: ', temp)
     return temp
 
 
@@ -217,19 +210,17 @@ def categories_rest(rest_id):
     FC = str(c.fetchone())[2:-3]
     c.execute('SELECT name FROM TC_list WHERE id_TC = (?)', (id_TC,))
     TC = str(c.fetchone())[2:-3]
-    print(TC)
     c.execute('''SELECT categories FROM categories_rest INNER JOIN rest_list
                      ON categories_rest.id_rest = rest_list.id_rest
                      INNER JOIN FC_list ON rest_list.id_FC = FC_list.id_FC
                      INNER JOIN TC_list ON FC_list.id_TC = TC_list.id_TC
                      WHERE (categories_rest.id_rest = (?))''',
-              (rest_id))
+              (rest_id,))
     categories_temp = c.fetchall()
     categories = []
     for i in categories_temp:
         categories.append("".join(i))
     temp = {'rest_name': rest_name, 'TC_name': TC, 'FC': FC, 'rest_id': int(rest_id), 'categories': categories}
-    print('ТЕСТ ВЫВОДА: ', temp)
     return temp
 
 
@@ -267,7 +258,6 @@ def menu_rest(rest_id, category):
     for i in range(len(menu)):
         menu_temp.append({'name': "".join(menu[i]), 'img': "".join(img[i]), 'composition': "".join(compositions[i]), 'price': int("".join(price[i]))})
     temp = {'rest_name': rest_name, 'rest_id': int(rest_id), 'category': category, 'menu': menu_temp}
-    print('ТЕСТ ВЫВОДА: ', temp)
     return temp
 
 def add_column():
