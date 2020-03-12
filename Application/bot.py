@@ -62,7 +62,7 @@ def start_message(message: Message):
                      parse_mode='HTML')
 
 
-# Список торговых центров (меню) !!!!!!!!!!!!!!!!!!!! оставил как было
+# Список торговых центров (меню)
 def makeKeyboard_TC(TC):
     markup = types.InlineKeyboardMarkup()
     for i in TC:
@@ -71,7 +71,7 @@ def makeKeyboard_TC(TC):
 
 
 # Список фудкортов (меню)
-def makeKeyboard_FC(FC):  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! изменил на список
+def makeKeyboard_FC(FC):
     TC_name = FC['TC_name']
     if not FC['FC']:
         return makeKeyboard_rest(DB.rest_list(TC_name))
@@ -87,7 +87,7 @@ def makeKeyboard_FC(FC):  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! изменил на �
 
 
 # Список рестаранов (меню)
-def makeKeyboard_rest(restaurants):  # !!!!!!!!!!!!!!!! не менял
+def makeKeyboard_rest(restaurants):
     TC_name = restaurants['TC_name']
     FC = restaurants['FC']
     markup = types.InlineKeyboardMarkup()
@@ -107,7 +107,7 @@ def makeKeyboard_rest(restaurants):  # !!!!!!!!!!!!!!!! не менял
 
 
 # Список категорий ресторана
-def makeKeyboard_categories(categories):  # !!!!!!!!!!!!! изменил на список
+def makeKeyboard_categories(categories):
     rest_id = str(categories['rest_id'])
     TC_name = categories['TC_name']
     FC = categories['FC']
@@ -130,7 +130,7 @@ def makeKeyboard_categories(categories):  # !!!!!!!!!!!!! изменил на с
 
 
 # Список товаров категории
-def makeKeyboard_menu(menu):  # !!!!!!!!!!!!!! сделал список
+def makeKeyboard_menu(menu):
     markup = types.InlineKeyboardMarkup()
     rest_id = str(menu['rest_id'])
     category = menu['category']
@@ -370,12 +370,12 @@ def handle_query(message):
         if not photo:
             bot.edit_message_text(chat_id=chat_id,
                                   message_id=message_id,
-                                  text=rest_name + '\nМеню',
+                                  text=rest_name + '\nМеню\n' + category,
                                   reply_markup=makeKeyboard_menu(menu),
                                   parse_mode='HTML')
         else:
             bot.send_message(chat_id=chat_id,
-                             text=rest_name + '\nМеню',
+                             text=rest_name + '\nМеню\n' + category,
                              reply_markup=makeKeyboard_menu(menu),
                              parse_mode='HTML')
             # Удаление старого сообщения
@@ -391,7 +391,11 @@ def handle_query(message):
 
         # Отправка изображния
         menu = DB.menu_rest(rest_id=rest_id, category=category)
-        img = open(menu['menu'][index]['img'], 'rb')
+        try:
+            img = open(menu['menu'][index]['img'], 'rb')
+        except:
+            print('Image not found:', menu['menu'][index]['img'])
+            return
         bot.send_photo(chat_id=chat_id, photo=img, reply_markup=makeKeyboard_food(menu, index))
 
         # Удаление старого сообщения
@@ -432,10 +436,12 @@ def handle_query(message):
         elif 'add' in action:
             rest_name = menu['rest_name']
 
-            # Проверка если начали добавлять товары другого ресторана !!!!!!!! не работает
+            # Проверка если начали добавлять товары другого ресторана
             basket = read_basket(chat_id)
-            # if basket and rest_name != basket[0]['rest_id']:
-            #     del_basket(chat_id)
+            update_text = ''
+            if basket and int(rest_id) != int(basket[0]['rest_id']):
+                del_basket(chat_id)
+                update_text = 'Корзина обновлена '
 
             food_name = menu['menu'][index]['name']
             prise = menu['menu'][index]['price']
@@ -445,7 +451,7 @@ def handle_query(message):
 
             bot.answer_callback_query(callback_query_id=message.id,
                                       show_alert=False,
-                                      text=f'В корзину добавлено {food_name} {quantity} шт.')
+                                      text=f'{update_text}В корзину добавлено {food_name} {quantity} шт.')
 
             bot.send_message(chat_id=chat_id,
                              text=rest_name + '\nМеню',
