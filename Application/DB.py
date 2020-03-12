@@ -1,6 +1,8 @@
 import sqlite3
+import os
 
 __connection = None
+Base_DIR = os.path.dirname(__file__)
 
 
 # Подключение
@@ -70,6 +72,7 @@ def init_db():
     conn.commit()
     c.close()
 
+
 # Ввод данных
 
 def insert_TC_list(id_TC, TC_name):
@@ -82,7 +85,6 @@ def insert_TC_list(id_TC, TC_name):
     c.close()
 
 
-
 def insert_FC_list(id_FC, FC, id_TC):
     conn = get_connection()
     c = conn.cursor()
@@ -91,7 +93,6 @@ def insert_FC_list(id_FC, FC, id_TC):
     conn.commit()
     print('FC_list updated')
     c.close()
-
 
 
 def insert_rest_list(id_rest, rest_name, id_FC):
@@ -104,7 +105,6 @@ def insert_rest_list(id_rest, rest_name, id_FC):
     c.close()
 
 
-
 def insert_categories_rest(id_categories, categories, id_rest):
     conn = get_connection()
     c = conn.cursor()
@@ -115,16 +115,14 @@ def insert_categories_rest(id_categories, categories, id_rest):
     c.close()
 
 
-
-def insert_menu_rest(id_menu, menu, id_categories,price,img,compositions):
+def insert_menu_rest(id_menu, menu, id_categories, price, img, compositions):
     conn = get_connection()
     c = conn.cursor()
-    temp = (id_menu, menu, id_categories,img,compositions,price)
+    temp = (id_menu, menu, id_categories, img, compositions, price)
     c.executemany('INSERT INTO menu_rest VALUES(?,?,?,?,?,?)', (temp,))
     conn.commit()
     print('menu_rest updated')
     c.close()
-
 
 
 # Вывод данных
@@ -255,11 +253,14 @@ def menu_rest(rest_id, category):
     c.execute('SELECT price FROM menu_rest WHERE id_categories = (?)', (id_categories,))
     price = c.fetchall()
     menu_temp = []
-    path = f'images/{rest_name}/{category}/'
+    path = f'{Base_DIR}/images/{rest_name}/{category}/'
     for i in range(len(menu)):
-        menu_temp.append({'name': "".join(menu[i]), 'img': path + "".join(img[i]), 'composition': "".join(compositions[i]), 'price': int("".join(price[i]))})
+        menu_temp.append(
+            {'name': "".join(menu[i]), 'img': path + "".join(img[i]), 'composition': "".join(compositions[i]),
+             'price': int("".join(price[i]))})
     temp = {'rest_name': rest_name, 'rest_id': int(rest_id), 'category': category, 'menu': menu_temp}
     return temp
+
 
 def add_column():
     conn = get_connection()
@@ -269,10 +270,11 @@ def add_column():
     conn.commit()
     c.close()
 
+
 def clear_table(name_table):
     conn = get_connection()
     c = conn.cursor()
     name_table = str(name_table)
-    c.execute("DELETE FROM "+name_table)
+    c.execute("DELETE FROM " + name_table)
     conn.commit()
     c.close()
