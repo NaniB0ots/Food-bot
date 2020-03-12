@@ -255,8 +255,9 @@ def menu_rest(rest_id, category):
     c.execute('SELECT price FROM menu_rest WHERE id_categories = (?)', (id_categories,))
     price = c.fetchall()
     menu_temp = []
+    path = f'images/{rest_name}/{category}/'
     for i in range(len(menu)):
-        menu_temp.append({'name': "".join(menu[i]), 'img': "".join(img[i]), 'composition': "".join(compositions[i]), 'price': int("".join(price[i]))})
+        menu_temp.append({'name': "".join(menu[i]), 'img': path + "".join(img[i]), 'composition': "".join(compositions[i]), 'price': int("".join(price[i]))})
     temp = {'rest_name': rest_name, 'rest_id': int(rest_id), 'category': category, 'menu': menu_temp}
     return temp
 
