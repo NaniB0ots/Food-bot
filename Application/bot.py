@@ -5,6 +5,8 @@ import os
 import DB
 from telebot import types
 from telebot.types import Message
+from datetime import datetime
+import pytz
 from flask import Flask, request
 from config import TOKEN
 from config import PROVIDER_TOKEN
@@ -33,6 +35,8 @@ def webhook():
 last_data = {}  # Информация о последней нажатой кнопке пользователем
 open_basket = {}  # Информация о том открыл ли пользователь корзину или нет
 menu_id = {}  # id сообщения с меню для каждого пользователя
+TZ_IRKUTSK = pytz.timezone('Asia/Irkutsk')  # Часовой пояс
+Base_DIR = os.path.dirname(__file__)
 
 
 @bot.message_handler(commands=['start'])
@@ -212,26 +216,29 @@ def add_basket(chat_id, food_name='', quantity=1, prise=0, rest_id=None):
             break
     if not check_food:
         content[chat_id] += [{'rest_id': rest_id, 'food_name': food_name, 'quantity': quantity, 'price': prise}]
-    file = open('basket.json', 'wt')
+    global Base_DIR
+    file = open(Base_DIR + '/basket.json', 'wt')
     file.write(json.dumps(content))
 
 
-# Удаление нулевых эдемнтов корзины
+# Удаление нулевых элемнтов корзины
 def save_basket(chat_id):
     chat_id = str(chat_id)
     content = read_basket()
     for i in content[chat_id]:
         if 'food_name' in i.keys() and i['quantity'] <= 0:
             content[chat_id].remove(i)
-        file = open('basket.json', 'wt')
+        global Base_DIR
+        file = open(Base_DIR + '/basket.json', 'wt')
         file.write(json.dumps(content))
 
 
 # Считывание данных о товарах в корзине пользователя
 def read_basket(chat_id=''):
     chat_id = str(chat_id)
-    if os.path.isfile('basket.json'):
-        file = open('basket.json').read()
+    global Base_DIR
+    if os.path.isfile(Base_DIR + '/basket.json'):
+        file = open(Base_DIR + '/basket.json').read()
         if file:
             content = json.loads(file)
             if not chat_id:
@@ -249,8 +256,9 @@ def del_basket(chat_id):
     content = read_basket()
     if chat_id in content:
         del content[chat_id]
-        file = open('basket.json', 'wt')
-        file.write(json.dumps(content))
+        global Base_DIR
+        file = open(Base_DIR + '/basket.json', 'wt')
+        file.write(json.dumps(content, indent=4))
 
 
 # Изменение товаров корзине
@@ -303,7 +311,7 @@ def handle_query(message):
     if chat_id in last_data.keys() and data == last_data[chat_id]:
         return
     last_data[chat_id] = data
-    print(data)
+    print(chat_id,':',data)
 
     # Список торговых центров
     if data == 'start':
@@ -538,7 +546,6 @@ def handle_query(message):
                                           reply_markup=makeKeyboard_changeBasket(basket, chat_id=chat_id))
     # Формирование заказа
     elif data == 'pay':
-
         bot.delete_message(chat_id=chat_id, message_id=message_id)
 
         markup = types.InlineKeyboardMarkup()
@@ -550,6 +557,7 @@ def handle_query(message):
         rest_id = items[0]['rest_id']
         restaurant = DB.categories_rest(rest_id)
         rest_name = restaurant['rest_name']
+        print(rest_name)
 
         prices = []
         for i in basket_info:
@@ -558,9 +566,9 @@ def handle_query(message):
             price = i['price']
             prices.append(
                 types.LabeledPrice(label=food_name + ' ' + str(quantity) + ' шт.', amount=price * quantity * 100))
-
-        bot.send_invoice(chat_id=chat_id, title=f'{rest_name}\nЗаказ №...', description=basket_text,
-                         invoice_payload={"rtt": "YourPayLoad"},
+        print(items)
+        bot.send_invoice(chat_id=chat_id, title=rest_name, description=basket_text,
+                         invoice_payload={"bla": "bla"},
                          provider_token=PROVIDER_TOKEN, start_parameter="mybot",
                          currency="RUB", prices=prices, reply_markup=markup)
 
@@ -569,6 +577,48 @@ def handle_query(message):
     # Удаление заказа или чека
     elif data == 'del_order_or_receipt':
         bot.delete_message(chat_id=chat_id, message_id=message_id)
+
+
+def add_order(rest_id, order):  # Добавление заказа
+    content = read_order()
+    if not (rest_id in content.keys()):
+        content[rest_id] = []
+    content[rest_id].append(order)
+    print('Order added', content[rest_id][-1])
+    save_orders(content)
+
+
+# Считываем список заказов
+def read_order():
+    global Base_DIR
+    if os.path.isfile(Base_DIR + '/orders.json'):
+        file = open(Base_DIR + '/orders.json').read()
+        if file:
+            content = json.loads(file)
+            return content
+    return {}
+
+
+# Получаем максимальный номер заказа за текущий день
+def get_order_number(content):
+    if content:
+        global TZ_IRKUTSK
+        date_now = datetime.now(TZ_IRKUTSK).date().strftime("%d.%m.%Y")
+        last_order = content[-1]
+        if last_order['date'] != date_now:
+            order_number = 0
+        else:
+            order_number = last_order['order_number']
+        order_number += 1
+        return order_number
+    return 1
+
+
+# Сохраняем список заказов
+def save_orders(content):
+    global Base_DIR
+    file = open(Base_DIR + '/orders.json', 'wt')
+    file.write(json.dumps(content, indent=4))
 
 
 # Проверка оплаты
@@ -590,12 +640,32 @@ def got_payment(message):
                      text='Список торговых центров',
                      reply_markup=makeKeyboard_TC(DB.TC_list()),
                      parse_mode='HTML')
+    # Формируем заказ
+    basket = read_basket(chat_id)
+    rest_id = basket[0]['rest_id']
+    rest_name = DB.categories_rest(rest_id)['rest_name']
+    date = datetime.now(TZ_IRKUTSK).date().strftime("%d.%m.%Y")
+    if rest_id in read_order().keys():
+        order_number = get_order_number(read_order()[rest_id])
+    else:
+        order_number = 1
+    receipt = ''
+    order_list = []
+    for i in basket:
+        order_list.append((i['food_name'], i['quantity'], i['price']))
+
+    order = {'chat_id': chat_id, 'rest_name': rest_name, 'order_list': order_list, 'date': date,
+             'order_number': order_number, 'receipt': receipt}
+    add_order(rest_id, order)
+
+    # Очищаем корзину
     del_basket(chat_id=chat_id)  # Удаление информации из корзины
 
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton(text='Свернуть', callback_data='del_order_or_receipt'))
-    bot.send_message(message.chat.id, 'Ваш заказ принят!\n'
-                                      'Ожидайте сообщения о готовности!\n'
+    order_number = (3 - len(str(order_number))) * '0' + str(order_number)
+    bot.send_message(message.chat.id, f'Ваш заказ принят!\n Номер заказа {order_number}.\n'
+                                      'Ожидайте сообщения о готовности!\n\n'
                                       'История покупок останется в чате над основным меню', reply_markup=markup)
 
 
@@ -649,9 +719,13 @@ def makeBasket(items):
 
 
 if __name__ == '__main__':
+    file = open('basket.json', 'wt')
+    file.write(json.dumps({}, indent=4))
     bot.remove_webhook()
     bot.skip_pending = True
     print('Бот запущен')
     bot.polling(none_stop=True, interval=0)
 
+file = open('basket.json', 'wt')
+file.write(json.dumps({}, indent=4))
 print('Бот запущен')
