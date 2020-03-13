@@ -22,6 +22,8 @@ from basket import save_basket, read_basket, del_basket
 
 from orders import add_order, read_order, get_order_number
 
+from user_orders import add_user_order
+
 # ----------------------------------------- WEBHOOK ----------------------------------------
 bot = telebot.TeleBot(TOKEN, threaded=False)
 
@@ -378,7 +380,7 @@ def checkout(pre_checkout_query):
 
 
 # Cообщения после оплаты
-@bot.message_handler(content_types=['successful_payment'])
+@bot.message_handler(commands=['test'])#content_types=['successful_payment'])
 def got_payment(message):
     chat_id = message.chat.id
     global menu_id
@@ -404,7 +406,10 @@ def got_payment(message):
 
     order = {'chat_id': chat_id, 'rest_name': rest_name, 'order_list': order_list, 'date': date,
              'order_number': order_number, 'receipt': receipt}
+    print(order)
     add_order(rest_id, order)
+    print(order)
+    add_user_order(rest_id=rest_id, order=order)
 
     # Очищаем корзину
     del_basket(chat_id=chat_id)  # Удаление информации из корзины
@@ -412,7 +417,7 @@ def got_payment(message):
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton(text='Свернуть', callback_data='del_order_or_receipt'))
     order_number = (3 - len(str(order_number))) * '0' + str(order_number)
-    bot.send_message(message.chat.id, f'Ваш заказ принят!\nНомер заказа {order_number}.\n'
+    bot.send_message(message.chat.id, f'Ваш заказ принят!\nНомер заказа {order_number}\n'
                                       'Ожидайте сообщения о готовности!\n\n'
                                       'История покупок останется в чате над основным меню', reply_markup=markup)
 

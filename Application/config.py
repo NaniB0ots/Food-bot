@@ -10,3 +10,4 @@ TZ_IRKUTSK = pytz.timezone('Asia/Irkutsk')  # Часовой пояс
 
 basket_bass = f'{Base_DIR}/basket.json'
 orders_path = f'{Base_DIR}/orders.json'
+user_orders_path = f'{Base_DIR}/user_orders.json'
