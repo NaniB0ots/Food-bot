@@ -13,6 +13,7 @@ from config import TOKEN
 from config import PROVIDER_TOKEN
 from config import URL
 from config import TZ_IRKUTSK
+from config import error_img_path
 
 from menu import makeKeyboard_TC, makeKeyboard_FC, makeKeyboard_rest
 from menu import makeKeyboard_categories, makeKeyboard_menu, makeKeyboard_food
@@ -193,7 +194,8 @@ def handle_query(message):
             img = open(menu['menu'][index]['img'], 'rb')
         except:
             print('Image not found:', menu['menu'][index]['img'])
-            return
+            img = open(error_img_path, 'rb')
+
         bot.send_photo(chat_id=chat_id, photo=img, reply_markup=makeKeyboard_food(menu, index))
 
         # Удаление старого сообщения

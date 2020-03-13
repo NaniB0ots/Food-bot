@@ -6,8 +6,11 @@ URL = 'https://bolanebyla.pythonanywhere.com/'
 PROVIDER_TOKEN = '381764678:TEST:14257'
 
 Base_DIR = os.path.dirname(__file__)
+
 TZ_IRKUTSK = pytz.timezone('Asia/Irkutsk')  # Часовой пояс
 
 basket_bass = f'{Base_DIR}/basket.json'
 orders_path = f'{Base_DIR}/orders.json'
 user_orders_path = f'{Base_DIR}/user_orders.json'
+
+error_img_path = f'{Base_DIR}/images/error_img.png'
