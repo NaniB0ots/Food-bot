@@ -218,7 +218,7 @@ def add_basket(chat_id, food_name='', quantity=1, prise=0, rest_id=None):
         content[chat_id] += [{'rest_id': rest_id, 'food_name': food_name, 'quantity': quantity, 'price': prise}]
     global Base_DIR
     file = open(Base_DIR + '/basket.json', 'wt')
-    file.write(json.dumps(content))
+    file.write(json.dumps(content, indent=4))
 
 
 # Удаление нулевых элемнтов корзины
@@ -230,7 +230,7 @@ def save_basket(chat_id):
             content[chat_id].remove(i)
         global Base_DIR
         file = open(Base_DIR + '/basket.json', 'wt')
-        file.write(json.dumps(content))
+        file.write(json.dumps(content, indent=4))
 
 
 # Считывание данных о товарах в корзине пользователя
@@ -664,7 +664,7 @@ def got_payment(message):
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton(text='Свернуть', callback_data='del_order_or_receipt'))
     order_number = (3 - len(str(order_number))) * '0' + str(order_number)
-    bot.send_message(message.chat.id, f'Ваш заказ принят!\n Номер заказа {order_number}.\n'
+    bot.send_message(message.chat.id, f'Ваш заказ принят!\nНомер заказа {order_number}.\n'
                                       'Ожидайте сообщения о готовности!\n\n'
                                       'История покупок останется в чате над основным меню', reply_markup=markup)
 
