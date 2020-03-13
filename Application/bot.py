@@ -7,10 +7,20 @@ from telebot import types
 from telebot.types import Message
 from datetime import datetime
 import pytz
+
 from flask import Flask, request
+
 from config import TOKEN
 from config import PROVIDER_TOKEN
 from config import URL
+
+from menu import makeKeyboard_TC, makeKeyboard_FC, makeKeyboard_rest
+from menu import makeKeyboard_categories, makeKeyboard_menu, makeKeyboard_food
+
+from basket import makeKeyboard_basket, makeKeyboard_changeBasket, add_basket
+from basket import save_basket, read_basket, del_basket
+
+from orders import add_order, read_order, get_order_number, save_orders
 
 # ----------------------------------------- WEBHOOK ----------------------------------------
 bot = telebot.TeleBot(TOKEN, threaded=False)
@@ -66,229 +76,7 @@ def start_message(message: Message):
                      parse_mode='HTML')
 
 
-# Список торговых центров (меню)
-def makeKeyboard_TC(TC):
-    markup = types.InlineKeyboardMarkup()
-    for i in TC:
-        markup.add(types.InlineKeyboardButton(text=i['name'], callback_data='{"TC":"' + i['name'] + '"}'))
-    return markup
 
-
-# Список фудкортов (меню)
-def makeKeyboard_FC(FC):
-    TC_name = FC['TC_name']
-    if not FC['FC']:
-        return makeKeyboard_rest(DB.rest_list(TC_name))
-    markup = types.InlineKeyboardMarkup()
-    for name in FC['FC']:
-        data = f'["{name}","{TC_name}"]'  # [name, TC_name]
-        markup.add(types.InlineKeyboardButton(text=name,
-                                              callback_data='{"FC":' + data + '}'))
-    markup.add(types.InlineKeyboardButton(text='<',
-                                          callback_data='start'))
-
-    return markup
-
-
-# Список рестаранов (меню)
-def makeKeyboard_rest(restaurants):
-    TC_name = restaurants['TC_name']
-    FC = restaurants['FC']
-    markup = types.InlineKeyboardMarkup()
-    for rest in restaurants['rests']:
-        markup.add(
-            types.InlineKeyboardButton(text=rest['name'], callback_data='{"rest_id":' + str(rest["rest_id"]) + '}'))
-
-    if FC:
-        markup.add(types.InlineKeyboardButton(text='<', callback_data='{"TC":"' + TC_name + '"}'))
-
-    else:
-        markup.add(types.InlineKeyboardButton(text='<', callback_data='start'))
-        return markup
-    markup.add(types.InlineKeyboardButton(text='<<',
-                                          callback_data='start'))
-    return markup
-
-
-# Список категорий ресторана
-def makeKeyboard_categories(categories):
-    rest_id = str(categories['rest_id'])
-    TC_name = categories['TC_name']
-    FC = categories['FC']
-
-    markup = types.InlineKeyboardMarkup()
-    for name in categories['categories']:
-        data = f'["{name}", "{rest_id}", ""]'  # [name, rest_id, ""] "" - не после показа фотографии
-        markup.add(types.InlineKeyboardButton(text=name, callback_data='{"cat":' + data + '}'))
-
-    if FC:
-        data = f'["{FC}", "{TC_name}"]'  # [FC, TC_name]
-        markup.add(types.InlineKeyboardButton(text='<',
-                                              callback_data='{"FC":' + data + '}'))
-    else:
-        markup.add(types.InlineKeyboardButton(text='<',
-                                              callback_data='{"TC":"' + TC_name + '"}'))
-    markup.add(types.InlineKeyboardButton(text='<<',
-                                          callback_data='start'))
-    return markup
-
-
-# Список товаров категории
-def makeKeyboard_menu(menu):
-    markup = types.InlineKeyboardMarkup()
-    rest_id = str(menu['rest_id'])
-    category = menu['category']
-    for m in menu['menu']:
-        data = f'[{menu["menu"].index(m)}, "{category}", "{rest_id}"]'  # [int(index), rest_id, category]
-        markup.add(types.InlineKeyboardButton(text=m['name'], callback_data='{"menu":' + data + '}'))
-
-    markup.add(types.InlineKeyboardButton(text='<', callback_data='{"rest_id":' + rest_id + '}'))
-    return markup
-
-
-# Меню информации о товаре
-def makeKeyboard_food(menu, index, quantity=1):
-    markup = types.InlineKeyboardMarkup()
-    rest_id = str(menu['rest_id'])
-    category = menu['category']
-    price = menu['menu'][index]['price']
-
-    # {"f":{"i":' + str(i) + ',"rest_id":' + str(rest_id) + ',"c":"' + category + ',""a:"' + 'struck' + '"}}'
-
-    # -, количество, +
-    action = ['-' + str(quantity), '+' + str(quantity)]
-    markup.add(types.InlineKeyboardButton(text='-',
-                                          callback_data='{"food":[' + rest_id + ',"' + category + '",' + str(
-                                              index) + ',"' + action[0] + '"]}'),
-               types.InlineKeyboardButton(text=str(quantity),
-                                          callback_data='None'),
-               types.InlineKeyboardButton(text='+',
-                                          callback_data='{"food":[' + rest_id + ',"' + category + '",' + str(
-                                              index) + ',"' + action[1] + '"]}'))
-
-    # Добавить в корзину
-    action = 'add' + str(quantity)
-    markup.add(types.InlineKeyboardButton(text='Добавить в корзину',
-                                          callback_data='{"food":[' + rest_id + ',"' + category + '",' + str(
-                                              index) + ',"' + action + '"]}'))
-
-    # Состав , Итого
-    action = 'sruct'
-    markup.add(types.InlineKeyboardButton(text='Состав',
-                                          callback_data='{"food":[' + rest_id + ',"' + category + '",' + str(
-                                              index) + ',"' + action + '"]}'),
-               types.InlineKeyboardButton(text='Итого: ' + str(quantity * int(price)) + ' руб',
-                                          callback_data='None'))
-
-    # Назад
-    data = f'["{category}", "{rest_id}", "p"]'  # [category, rest_id, "p"] p - после фотографии
-    markup.add(types.InlineKeyboardButton(text='Отмена', callback_data='{"cat":' + data + '}'))
-    return markup
-
-
-# Кнопки корзины
-def makeKeyboard_basket(clear=False):
-    markup = types.InlineKeyboardMarkup()
-    if not clear:
-        markup.add(types.InlineKeyboardButton(text='Сформировать заказ', callback_data='pay'))
-        markup.add(types.InlineKeyboardButton(text='Очистить',
-                                              callback_data='{"basket":"clear"}'),
-                   types.InlineKeyboardButton(text='Изменить',
-                                              callback_data='{"basket":"change"}'))
-
-    markup.add(types.InlineKeyboardButton(text='Свернуть', callback_data='{"basket":"close"}'))
-    return markup
-
-
-# Добавление товара в корзину
-def add_basket(chat_id, food_name='', quantity=1, prise=0, rest_id=None):
-    chat_id = str(chat_id)
-    rest_id = str(rest_id)
-    content = read_basket()
-    if not (chat_id in content.keys()):
-        content[chat_id] = []
-    # Проверяем есть ли уже такой товар в корзине
-    check_food = False
-    for i in content[chat_id]:
-        if 'food_name' in i.keys() and i['food_name'] == food_name:
-            i['quantity'] += quantity
-            check_food = True
-            break
-    if not check_food:
-        content[chat_id] += [{'rest_id': rest_id, 'food_name': food_name, 'quantity': quantity, 'price': prise}]
-    global Base_DIR
-    file = open(Base_DIR + '/basket.json', 'wt')
-    file.write(json.dumps(content, indent=4))
-
-
-# Удаление нулевых элемнтов корзины
-def save_basket(chat_id):
-    chat_id = str(chat_id)
-    content = read_basket()
-    for i in content[chat_id]:
-        if 'food_name' in i.keys() and i['quantity'] <= 0:
-            content[chat_id].remove(i)
-        global Base_DIR
-        file = open(Base_DIR + '/basket.json', 'wt')
-        file.write(json.dumps(content, indent=4))
-
-
-# Считывание данных о товарах в корзине пользователя
-def read_basket(chat_id=''):
-    chat_id = str(chat_id)
-    global Base_DIR
-    if os.path.isfile(Base_DIR + '/basket.json'):
-        file = open(Base_DIR + '/basket.json').read()
-        if file:
-            content = json.loads(file)
-            if not chat_id:
-                return content
-            if not chat_id in content.keys():
-                return {}
-            basket = content[chat_id]
-            return basket
-    return {}
-
-
-# Очистка корзины
-def del_basket(chat_id):
-    chat_id = str(chat_id)
-    content = read_basket()
-    if chat_id in content:
-        del content[chat_id]
-        global Base_DIR
-        file = open(Base_DIR + '/basket.json', 'wt')
-        file.write(json.dumps(content, indent=4))
-
-
-# Изменение товаров корзине
-def makeKeyboard_changeBasket(basket, chat_id):
-    markup = types.InlineKeyboardMarkup()
-    chat_id = str(chat_id)
-    save_data = []
-
-    for i in range(len(basket)):
-        food_name = basket[i]['food_name']
-        quantity = basket[i]['quantity']
-        action = ['-' + str(quantity), '+' + str(quantity)]
-        save_data += [i, quantity]
-        # Название товара
-        markup.add(types.InlineKeyboardButton(text=food_name, callback_data='None'))
-        # -, количество, +
-        markup.add(types.InlineKeyboardButton(text='-',
-                                              callback_data='{"change":["' + food_name + '","' + action[
-                                                  0] + '"]}'),
-                   types.InlineKeyboardButton(text=str(quantity) + ' шт.',
-                                              callback_data='None'),
-                   types.InlineKeyboardButton(text='+',
-                                              callback_data='{"change":["' + food_name + '","' + action[
-                                                  1] + '"]}'))
-
-    # save_data
-    # Сохранить
-    markup.add(
-        types.InlineKeyboardButton(text='Сохранить', callback_data='{"change":"save"}'))
-    return markup
 
 
 # ===================== ОБРАБОТКА ОТВЕТОВ КЛАВИАТУРЫ ===================== #
@@ -311,7 +99,7 @@ def handle_query(message):
     if chat_id in last_data.keys() and data == last_data[chat_id]:
         return
     last_data[chat_id] = data
-    print(chat_id,':',data)
+    print(chat_id, ':', data)
 
     # Список торговых центров
     if data == 'start':
@@ -579,46 +367,6 @@ def handle_query(message):
         bot.delete_message(chat_id=chat_id, message_id=message_id)
 
 
-def add_order(rest_id, order):  # Добавление заказа
-    content = read_order()
-    if not (rest_id in content.keys()):
-        content[rest_id] = []
-    content[rest_id].append(order)
-    print('Order added', content[rest_id][-1])
-    save_orders(content)
-
-
-# Считываем список заказов
-def read_order():
-    global Base_DIR
-    if os.path.isfile(Base_DIR + '/orders.json'):
-        file = open(Base_DIR + '/orders.json').read()
-        if file:
-            content = json.loads(file)
-            return content
-    return {}
-
-
-# Получаем максимальный номер заказа за текущий день
-def get_order_number(content):
-    if content:
-        global TZ_IRKUTSK
-        date_now = datetime.now(TZ_IRKUTSK).date().strftime("%d.%m.%Y")
-        last_order = content[-1]
-        if last_order['date'] != date_now:
-            order_number = 0
-        else:
-            order_number = last_order['order_number']
-        order_number += 1
-        return order_number
-    return 1
-
-
-# Сохраняем список заказов
-def save_orders(content):
-    global Base_DIR
-    file = open(Base_DIR + '/orders.json', 'wt')
-    file.write(json.dumps(content, indent=4))
 
 
 # Проверка оплаты
