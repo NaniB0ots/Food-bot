@@ -1,8 +1,8 @@
 import json
 import os
 from telebot import types
+from config import basket_bass
 
-Base_DIR = os.path.dirname(__file__)
 
 # Кнопки корзины
 def makeKeyboard_basket(clear=False):
@@ -34,8 +34,7 @@ def add_basket(chat_id, food_name='', quantity=1, prise=0, rest_id=None):
             break
     if not check_food:
         content[chat_id] += [{'rest_id': rest_id, 'food_name': food_name, 'quantity': quantity, 'price': prise}]
-    global Base_DIR
-    file = open(Base_DIR + '/basket.json', 'wt')
+    file = open(basket_bass, 'wt')
     file.write(json.dumps(content, indent=4))
 
 
@@ -46,17 +45,15 @@ def save_basket(chat_id):
     for i in content[chat_id]:
         if 'food_name' in i.keys() and i['quantity'] <= 0:
             content[chat_id].remove(i)
-        global Base_DIR
-        file = open(Base_DIR + '/basket.json', 'wt')
+        file = open(basket_bass, 'wt')
         file.write(json.dumps(content, indent=4))
 
 
 # Считывание данных о товарах в корзине пользователя
 def read_basket(chat_id=''):
     chat_id = str(chat_id)
-    global Base_DIR
-    if os.path.isfile(Base_DIR + '/basket.json'):
-        file = open(Base_DIR + '/basket.json').read()
+    if os.path.isfile(basket_bass):
+        file = open(basket_bass).read()
         if file:
             content = json.loads(file)
             if not chat_id:
@@ -74,8 +71,7 @@ def del_basket(chat_id):
     content = read_basket()
     if chat_id in content:
         del content[chat_id]
-        global Base_DIR
-        file = open(Base_DIR + '/basket.json', 'wt')
+        file = open(basket_bass, 'wt')
         file.write(json.dumps(content, indent=4))
 
 
@@ -107,3 +103,18 @@ def makeKeyboard_changeBasket(basket, chat_id):
     markup.add(
         types.InlineKeyboardButton(text='Сохранить', callback_data='{"change":"save"}'))
     return markup
+
+
+# Формирует информацию о корзине
+def makeBasket(items):
+    basket_text = ''
+    amount = 0
+    basket_info = []
+    for i in items:
+        food_name = i['food_name']
+        quantity = i['quantity']
+        price = i['price']
+        basket_info.append({'food_name': food_name, 'quantity': quantity, 'price': price})
+        basket_text += food_name + ' ' + str(quantity) + ' шт.' + ' ' + str(quantity * price) + ' руб.\n'
+        amount += quantity * price
+    return basket_text, amount, basket_info

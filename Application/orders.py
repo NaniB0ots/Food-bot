@@ -1,10 +1,8 @@
 import json
 import os
 from datetime import datetime
-import pytz
+from config import TZ_IRKUTSK, orders_path
 
-TZ_IRKUTSK = pytz.timezone('Asia/Irkutsk')  # Часовой пояс
-Base_DIR = os.path.dirname(__file__)
 
 def add_order(rest_id, order):  # Добавление заказа
     content = read_order()
@@ -17,9 +15,8 @@ def add_order(rest_id, order):  # Добавление заказа
 
 # Считываем список заказов
 def read_order():
-    global Base_DIR
-    if os.path.isfile(Base_DIR + '/orders.json'):
-        file = open(Base_DIR + '/orders.json').read()
+    if os.path.isfile(orders_path):
+        file = open(orders_path).read()
         if file:
             content = json.loads(file)
             return content
@@ -29,7 +26,6 @@ def read_order():
 # Получаем максимальный номер заказа за текущий день
 def get_order_number(content):
     if content:
-        global TZ_IRKUTSK
         date_now = datetime.now(TZ_IRKUTSK).date().strftime("%d.%m.%Y")
         last_order = content[-1]
         if last_order['date'] != date_now:
@@ -43,6 +39,5 @@ def get_order_number(content):
 
 # Сохраняем список заказов
 def save_orders(content):
-    global Base_DIR
-    file = open(Base_DIR + '/orders.json', 'wt')
+    file = open(orders_path, 'wt')
     file.write(json.dumps(content, indent=4))

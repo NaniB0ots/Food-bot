@@ -1,14 +1,13 @@
 import sqlite3
-import os
+from config import Base_DIR
 
 __connection = None
-Base_DIR = os.path.dirname(__file__)
+
 
 
 # Подключение
 def get_connection():
     global __connection
-    global Base_DIR
     if __connection is None:
         __connection = sqlite3.connect(Base_DIR + '/test_bot.db')
         print("Connected to BD")

@@ -1,26 +1,26 @@
 import telebot
 import json
 import time
-import os
 import DB
 from telebot import types
 from telebot.types import Message
 from datetime import datetime
-import pytz
+
 
 from flask import Flask, request
 
 from config import TOKEN
 from config import PROVIDER_TOKEN
 from config import URL
+from config import TZ_IRKUTSK
 
 from menu import makeKeyboard_TC, makeKeyboard_FC, makeKeyboard_rest
 from menu import makeKeyboard_categories, makeKeyboard_menu, makeKeyboard_food
 
-from basket import makeKeyboard_basket, makeKeyboard_changeBasket, add_basket
+from basket import makeKeyboard_basket, makeKeyboard_changeBasket, add_basket, makeBasket
 from basket import save_basket, read_basket, del_basket
 
-from orders import add_order, read_order, get_order_number, save_orders
+from orders import add_order, read_order, get_order_number
 
 # ----------------------------------------- WEBHOOK ----------------------------------------
 bot = telebot.TeleBot(TOKEN, threaded=False)
@@ -45,8 +45,8 @@ def webhook():
 last_data = {}  # Информация о последней нажатой кнопке пользователем
 open_basket = {}  # Информация о том открыл ли пользователь корзину или нет
 menu_id = {}  # id сообщения с меню для каждого пользователя
-TZ_IRKUTSK = pytz.timezone('Asia/Irkutsk')  # Часовой пояс
-Base_DIR = os.path.dirname(__file__)
+
+
 
 
 @bot.message_handler(commands=['start'])
@@ -451,19 +451,7 @@ def text(message: Message):
                          parse_mode='HTML')
 
 
-# Формирует информацию о корзине
-def makeBasket(items):
-    basket_text = ''
-    amount = 0
-    basket_info = []
-    for i in items:
-        food_name = i['food_name']
-        quantity = i['quantity']
-        price = i['price']
-        basket_info.append({'food_name': food_name, 'quantity': quantity, 'price': price})
-        basket_text += food_name + ' ' + str(quantity) + ' шт.' + ' ' + str(quantity * price) + ' руб.\n'
-        amount += quantity * price
-    return basket_text, amount, basket_info
+
 
 
 if __name__ == '__main__':
