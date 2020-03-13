@@ -8,8 +8,9 @@ Base_DIR = os.path.dirname(__file__)
 # Подключение
 def get_connection():
     global __connection
+    global Base_DIR
     if __connection is None:
-        __connection = sqlite3.connect('test_bot.db')
+        __connection = sqlite3.connect(Base_DIR + '/test_bot.db')
         print("Connected to BD")
     return __connection
 
