@@ -380,7 +380,7 @@ def checkout(pre_checkout_query):
 
 
 # Cообщения после оплаты
-@bot.message_handler(commands=['test'])#content_types=['successful_payment'])
+@bot.message_handler(content_types=['successful_payment'])
 def got_payment(message):
     chat_id = message.chat.id
     global menu_id
@@ -406,9 +406,8 @@ def got_payment(message):
 
     order = {'chat_id': chat_id, 'rest_name': rest_name, 'order_list': order_list, 'date': date,
              'order_number': order_number, 'receipt': receipt}
-    print(order)
+
     add_order(rest_id, order)
-    print(order)
     add_user_order(rest_id=rest_id, order=order)
 
     # Очищаем корзину
