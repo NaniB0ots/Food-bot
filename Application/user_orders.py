@@ -3,12 +3,11 @@ import os
 from config import user_orders_path
 
 def add_user_order(rest_id, order):
-    print(order)
-    chat_id = order['chat_id']
+    chat_id = str(order['chat_id'])
     del order['chat_id']
     order['rest_id'] = rest_id
     content = read_user_order()
-    if not (rest_id in content.keys()):
+    if not (chat_id in content.keys()):
         content[chat_id] = []
     content[chat_id].append(order)
     save_user_orders(content)
@@ -20,7 +19,6 @@ def read_user_order():
             content = json.loads(file)
             return content
     return {}
-
 # Сохраняем список заказов пользователя
 def save_user_orders(content):
     file = open(user_orders_path, 'wt')
